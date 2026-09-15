@@ -70,7 +70,7 @@ We implement comprehensive reward processing to stabilize training:
 
 \subsection{Why Use Global Batch Normalization?} \label{appendix:whyglobal}
 
-We observe that as \( N \to \infty \), the denominator of the estimator converges to the constant \( \sigma \), and the bias in the numerator vanishes. The insight underlies our decision to adopt global batch normalization in both \textsc{REINFORCE++} and \textsc{REINFORCE++}\textsubscript{\textit{w/} Baseline}\,, as the global batch size ($N_{global}$) is typically much larger (e.g., 1024) than the group batch size ($N_{group}$, e.g., 4 or 8) in practice. As $N_{global} \to \infty$, the sample statistics $\mu_b$ and $\sigma_b$ converge to true constants, making the estimator effectively unbiased.
+We observe that as \( N \to \infty \), the denominator of the estimator converges to the constant \( \sigma \), and the bias in the numerator vanishes. The insight underlies our decision to adopt global batch normalization in both \textsc{REINFORCE++} and \textsc{\varn}, as the global batch size ($N_{global}$) is typically much larger (e.g., 1024) than the group batch size ($N_{group}$, e.g., 4 or 8) in practice. As $N_{global} \to \infty$, the sample statistics $\mu_b$ and $\sigma_b$ converge to true constants, making the estimator effectively unbiased.
 
 \subsection{Summary}
 
