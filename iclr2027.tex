@@ -6,9 +6,6 @@
 % Compile with pdfLaTeX to preserve the official ICLR Times Type 1 fonts.
 % XeLaTeX/LuaLaTeX use a different font encoding and can trigger font fallback.
 \usepackage{iclr2027_conference,times}
-% Times has no separate small-caps italic face.  Match LaTeX's usual italic
-% fallback explicitly so this combination does not emit a font warning.
-\AtBeginDocument{\DeclareFontShape{OT1}{ptm}{m}{scit}{<-> ptmri7t}{}}
 
 % Recommended, but optional, packages for figures and better typesetting:
 \usepackage{microtype}
