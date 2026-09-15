@@ -1,0 +1,173 @@
+\begin{center}
+    {\Large \bfseries Appendix}
+\end{center}
+
+\section{Proof: The GRPO Advantage Estimator is Biased} \label{appendix:proof_GRPO}
+
+\subsection{Assumptions and Settings}
+We observe \(N\) rewards \(r_i\) for a prompt, and assume the true baseline is \(\theta\), such that
+\[
+r_i = \theta + \epsilon_i, \quad \epsilon_i \sim \mathcal{N}(0, \sigma^2),\quad i=1,\dots,N,
+\]
+with all advantage value \(\epsilon_i\) independent. Define
+\[
+\bar\epsilon = \frac{1}{N} \sum_{j=1}^N \epsilon_j, \quad
+D = \sqrt{ \frac{1}{N} \sum_{j=1}^N (\epsilon_j - \bar\epsilon)^2 }, \quad
+A_i = \frac{ \epsilon_i - \bar\epsilon }{D }.
+\]
+We will prove the following:
+
+\begin{theorem}
+For any finite \(N \ge 2\), the advantage estimator \(A_i\) is biased:
+\[
+\mathbb{E}[A_i \mid \epsilon_i] \ne \epsilon_i.
+\]
+\end{theorem}
+
+\begin{proof}
+We can prove our findings with the following steps:\\
+\textbf{Step 1: Numerator Bias}
+We rewrite the numerator:
+\[
+\epsilon_i - \bar\epsilon = \left(1 - \frac{1}{N} \right) \epsilon_i - \frac{1}{N} \sum_{j \ne i} \epsilon_j.
+\]
+Since the \(\epsilon_j\) for \(j \ne i\) are zero-mean and independent of \(\epsilon_i\),
+\[
+\mathbb{E}[\epsilon_i - \bar\epsilon \mid \epsilon_i] = \left(1 - \frac{1}{N} \right) \epsilon_i.
+\]
+
+\textbf{Step 2: Denominator Depends on \(\epsilon_i\)}
+
+\textit{(a) Compute \(\mathbb{E}[D^2 \mid \epsilon_i]\):}
+By definition,
+\[
+D^2 = \frac{1}{N} \sum_{j=1}^N (\epsilon_j - \bar\epsilon)^2 = \frac{1}{N} \sum_{j=1}^N \epsilon_j^2 - \bar\epsilon^2.
+\]
+Since
+\[
+\bar\epsilon = \frac{1}{N} \left( \epsilon_i + \sum_{j \ne i} \epsilon_j \right),
+\]
+and conditioning on \(\epsilon_i\) keeps the \(\epsilon_j\), \(j \ne i\), i.i.d.\ \(\mathcal{N}(0, \sigma^2)\), we obtain:
+\[
+\mathbb{E} \left[ \sum_{j=1}^N \epsilon_j^2 \mid \epsilon_i \right] = \epsilon_i^2 + (N-1) \sigma^2,
+\]
+\begin{align*}
+\mathbb{E}[\bar\epsilon^2 \mid \epsilon_i]
+&= \frac{1}{N^2} \mathbb{E} \left[ \left( \epsilon_i + \sum_{j \ne i} \epsilon_j \right)^2 \Big| \epsilon_i \right] \\
+&= \frac{1}{N^2} \left( \epsilon_i^2 + 2 \epsilon_i \cdot \underbrace{\mathbb{E}\left[ \sum_{j \ne i} \epsilon_j \right]}_{0} + \mathbb{E} \left[ \left( \sum_{j \ne i} \epsilon_j \right)^2 \right] \right) \\
+&= \frac{\epsilon_i^2 + (N-1) \sigma^2}{N^2}.
+\end{align*}
+Subtracting:
+\begin{align}
+\mathbb{E}[D^2 \mid \epsilon_i]
+&= \frac{1}{N} (\epsilon_i^2 + (N-1) \sigma^2) - \frac{\epsilon_i^2 + (N-1)\sigma^2}{N^2} \nonumber \\
+&= \underbrace{\frac{(N-1)^2}{N^2} \sigma^2}_{\alpha} + \underbrace{\frac{N-1}{N^2}}_{\beta} \epsilon_i^2 = \alpha + \beta \epsilon_i^2.
+\label{eq:condD2}
+\end{align}
+
+\textit{(b) \(g(\epsilon_i)\) is Not Constant:}
+Let \(g(\epsilon_i) = \mathbb{E}\left[1/D \mid \epsilon_i \right]\) and \(\mu(\epsilon_i) = \mathbb{E}[D^2 \mid \epsilon_i] = \alpha + \beta \epsilon_i^2\).
+
+Using Taylor expansion of \(f(x) = 1/\sqrt{x}\) around \(x_0 = \mu(\epsilon_i)\):
+\[
+f(x) = \frac{1}{\sqrt{x_0}} - \frac{1}{2} \frac{x-x_0}{x_0^{3/2}} + \frac{3}{8} \frac{(x-x_0)^2}{x_0^{5/2}} + O((x-x_0)^3)
+\]
+
+Taking the conditional expectation:
+\[
+\begin{aligned}
+g(\epsilon_i) 
+&= \mathbb{E}[1/D \mid \epsilon_i] 
+= \mathbb{E}\left[\frac{1}{\sqrt{D^2}} \mid \epsilon_i\right] 
+= \mathbb{E}\left[f(D^2) \mid \epsilon_i\right], \quad \text{where } f(x) = \frac{1}{\sqrt{x}} \\
+&\approx f(\mu(\epsilon_i)) + f'(\mu(\epsilon_i)) \cdot \mathbb{E}[D^2 - \mu(\epsilon_i) \mid \epsilon_i] + \frac{f''(\mu(\epsilon_i))}{2} \cdot \mathbb{E}[(D^2 - \mu(\epsilon_i))^2 \mid \epsilon_i] \\
+&= \frac{1}{\sqrt{\mu(\epsilon_i)}} 
+- \frac{1}{2 \mu(\epsilon_i)^{3/2}} \cdot \underbrace{\mathbb{E}[D^2 - \mu(\epsilon_i) \mid \epsilon_i]}_{=\,0} 
++ \frac{3}{8 \mu(\epsilon_i)^{5/2}} \cdot \text{Var}(D^2 \mid \epsilon_i) \\
+&= \frac{1}{\sqrt{\mu(\epsilon_i)}} + \frac{3}{8} \cdot \frac{\text{Var}(D^2 \mid \epsilon_i)}{\mu(\epsilon_i)^{5/2}}
+\end{aligned}
+\]
+
+Since \(\mu(\epsilon_i) = \alpha + \beta \epsilon_i^2\) with \(\beta > 0\), the first term alone shows that \(g(\epsilon_i)\) depends on \(\epsilon_i^2\) and hence is not constant.
+
+\textbf{Step 3: Putting It Together}
+Decomposing \(A_i\),
+\[
+A_i = \frac{\epsilon_i - \bar\epsilon}{D} = \left(1 - \frac{1}{N} \right) \frac{\epsilon_i}{D} - \left( \frac{1}{N} \sum_{j \ne i} \epsilon_j \right) \cdot \frac{1}{D}.
+\]
+For fixed \(\epsilon_i\), the conditional distribution of \(\sum_{j \ne i} \epsilon_j\) is symmetric about zero, while \(1/D\) is always positive. Thus:
+\[
+\mathbb{E} \left[ \left( \frac{-1}{N} \sum_{j \ne i} \epsilon_j \right) \cdot \frac{1}{D} \Big| \epsilon_i \right] = 0.
+\]
+It follows that
+\[
+\mathbb{E}[A_i \mid \epsilon_i] = \left(1 - \frac{1}{N} \right) \epsilon_i \cdot \mathbb{E} \left[ \frac{1}{D} \mid \epsilon_i \right] = \left(1 - \frac{1}{N} \right) \epsilon_i \cdot g(\epsilon_i).
+\]
+
+\textbf{Step 4: Concluding the Bias}
+If \(A_i\) were unbiased, we would have:
+\[
+\left(1 - \frac{1}{N} \right) g(\epsilon_i) \equiv 1 \quad \Rightarrow \quad g(\epsilon_i) \equiv \frac{N}{N-1},
+\]
+which contradicts Step 2. Therefore, for any finite \(N \ge 2\),
+\[
+\mathbb{E}[A_i \mid \epsilon_i] \ne \epsilon_i.
+\]
+Hence \(A_i\) is a biased estimator.
+
+\end{proof}
+
+\section{KL Penalty Design}\label{appendix:kl_design}
+
+In non-critic algorithms like \varn, a KL divergence term is often added as a separate loss to constrain the policy $\pi_{\theta}$ from deviating too far from a reference policy $\pi_{ref}$. In practice, this expectation is estimated using samples, and three familiar estimators are used.
+
+Given the importance ratio $\delta(y) = \pi_{ref}(y|\cdot) / \pi_{\theta}(y|\cdot)$ (where $\pi_{\theta}$ is the sampling policy and $\pi_{ref}$ is the reference):
+\begin{itemize}
+    \item $k_{1}(y) = -\log \delta(y) = \log \frac{\pi_{\theta}(y|\cdot)}{\pi_{ref}(y|\cdot)}$
+    \item $k_{2}(y) = \frac{1}{2}(\log \delta(y))^{2} = \frac{1}{2}\left(\log \frac{\pi_{ref}(y|\cdot)}{\pi_{\theta}(y|\cdot)}\right)^{2}$
+    \item $k_{3}(y) = \delta(y) - 1 - \log \delta(y)$
+\end{itemize}
+
+We analyze which of these (k1, $k_2$, or $k_3$) is the correct choice when used as a separate loss term.
+
+\paragraph{Theoretical Reverse KL Gradient}
+We are training with samples from $\pi_{\theta}$, so we are approximating the **Reverse KL (RKL)**, $D_{KL}(\pi_{\theta}||\pi_{ref})$. The practical policy gradient for RKL is (more details are in \citep{liu2025rethinking}):
+$$
+\nabla_{\theta}\mathcal{J}_{RKL}(\theta) = \mathbb{E}_{y\sim\pi_{\theta}(\cdot|x)}\left[\left(\log\frac{\pi_{\theta}(y|x)}{\pi_{ref}(y|x)}\right)\nabla_{\theta}\log \pi_{\theta}(y|x)\right]
+$$
+
+\paragraph{k1 Analysis}
+We can **exclude k1** as a loss term. Its gradient does not depend on $\pi_{ref}$ and thus provides no constraining effect. The loss $\mathcal{J}_{k{1}} = \mathbb{E}_{y\sim\pi_{\theta}}[\log \pi_{\theta} - \log \pi_{ref}]$ differentiates to $\nabla_{\theta}\mathcal{J}_{k{1}} = \mathbb{E}_{y\sim\pi_{\theta}}[\nabla_{\theta}\log \pi_{\theta}]$, as the $\pi_{ref}$ term vanishes. (Note: k1 *is* used inside the reward for REINFORCE++, but not as a separate loss term).
+
+\paragraph{$k_2$ Analysis}
+The $k_2$ estimator provides a gradient that is **equivalent to the theoretical Reverse KL gradient**.
+
+The $k_2$ loss is (noting that $(\log \frac{\pi_{\theta}}{\pi_{ref}})^2 = (\log \frac{\pi_{ref}}{\pi_{\theta}})^2$):
+$$
+\mathcal{J}_{k{2}as~loss}(\theta)=\mathbb{E}_{y\sim\pi_{\theta}(\cdot|x)}\left[\frac{1}{2}\left(\log\frac{\pi_{\theta}(y|x)}{\pi_{ref}(y|x)}\right)^{2}\right]
+$$
+Differentiating the term inside the expectation gives:
+\begin{align*}
+\nabla_{\theta}\left[\frac{1}{2}\left(\log\frac{\pi_{\theta}}{\pi_{ref}}\right)^{2}\right] &= \left(\log\frac{\pi_{\theta}}{\pi_{ref}}\right) \cdot \nabla_{\theta}\left(\log\frac{\pi_{\theta}}{\pi_{ref}}\right) \\
+&= \left(\log\frac{\pi_{\theta}}{\pi_{ref}}\right) \cdot \nabla_{\theta}(\log \pi_{\theta} - \log \pi_{ref}) \\
+&= \left(\log\frac{\pi_{\theta}}{\pi_{ref}}\right)\nabla_{\theta}\log \pi_{\theta}
+\end{align*}
+When we take the expectation over $y \sim \pi_{\theta}$, the gradient of the $k_2$ loss becomes:
+$$
+\mathbb{E}_{y\sim\pi_{\theta}}\left[\left(\log\frac{\pi_{\theta}(y|x)}{\pi_{ref}(y|x)}\right)\nabla_{\theta}\log \pi_{\theta}(y|x)\right]
+$$
+This \emph{perfectly matches} the practical RKL gradient. Therefore, $k_2$ is the theoretically correct and stable choice.
+
+\paragraph{$k_3$ Analysis}
+The $k_3$ gradient is problematic. It is theoretically an estimator for the **Forward KL** ($KL(\pi_{ref}||\pi_{\theta})$), not the Reverse KL. There is a mismatch: we are sampling from $\pi_{\theta}$, but the Forward KL gradient requires sampling from $\pi_{ref}$.
+
+This method, used in GRPO, suffers from two major issues:
+\begin{itemize}
+    \item \textbf{Extremely High Variance:} When $\pi_{\theta}(y)$ becomes tiny for a sample $y$ where $\pi_{ref}(y)$ is moderate, the importance weight $\frac{\pi_{ref}(y)}{\pi_{\theta}(y)}$ in the gradient estimator explodes, leading to "infinite variance".
+    \item \textbf{Numerical Instability:} It requires computing $p/q$ via $\exp(\log p - \log q)$, which is prone to overflow.
+\end{itemize}
+The result explains why methods using $k$ require frequent resetting of $\pi_{ref}$ to prevent the policies from diverging and the $k_3$ estimator from becoming unstable.
+
+\paragraph{Conclusion}
+Based on this analysis, the $k_2$ estimator is the optimal choice for the KL loss term, as it accurately and stably estimates the Reverse KL gradient. We therefore use the $k_2$ estimator in our \varn algorithm.
+% --- END OF MODIFIED SECTION ---
