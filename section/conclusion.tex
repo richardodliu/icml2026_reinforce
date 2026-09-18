@@ -1,12 +1,12 @@
 \section{Conclusion}\label{sec:conclusion}
-In this paper, we present \ours, a critic-free RLHF framework designed to enhance training stability by addressing fundamental flaws in existing methods. We identified that prior critic-free algorithms, such as GRPO, rely on \textit{prompt-level (local)} advantage normalization, which we prove to be theoretically biased (Appendix \Cref{appendix:proof_GRPO}) and demonstrate to be practically unstable.
+In this paper, we present \ours, a critic-free RLHF framework designed to enhance training stability by addressing fundamental flaws in existing methods. We identified that prior critic-free algorithms, such as GRPO, rely on \textit{prompt-level (local)} advantage normalization, whose finite-sample distortion we characterize (Appendix~\ref{appendix:proof_GRPO}) and demonstrate to be practically unstable.
 
-Our solution, \textbf{Global Advantage Normalization}, normalizes advantages across the entire batch, providing a stable and \textit{effectively unbiased} estimator (whose bias vanishes as batch size increases). We proposed two variants tailored for different needs:
+Our solution, \textbf{Global Advantage Normalization}, normalizes advantages across the entire batch, providing a shared scale that converges to population standardization under independent sampling. We proposed two variants tailored for different needs:
 \begin{enumerate}
     % --- MODIFIED: Conclusion updated to match the k>=1 logic ---
-    \item \ours: For general-domain RLHF, we show the single-sample ($k=1$) approach is highly efficient and achieves superior OOD generalization. We also show that its application with $k>1$ is robust for reasoning tasks (Section 4.2).
+    \item \ours: For general-domain RLHF, we show the single-sample ($k=1$) approach achieves competitive preference alignment with broader prompt coverage. We also show that its application with $k>1$ is robust for reasoning tasks (Section 4.2).
     % --- END OF MODIFICATION ---
-    \item \varn: For complex reasoning and agent tasks, this variant combines group-mean reshaping with stable global normalization and a theoretically sound $k_2$ estimator for KL.
+    \item \varn: For complex reasoning and agent tasks, this variant combines group-mean reshaping with stable global normalization and a $k_2$ gradient surrogate for separate KL regularization.
 \end{enumerate}
 
-Our empirical results, supported by independent validation from multiple third-party systems, confirmed the effectiveness of this specialized approach. \ours demonstrated state-of-the-art generalization in general RLHF. \varn showed dramatic improvements in stability, preventing overfitting in low-data regimes and outperforming both GRPO and full-critic PPO in complex, long-horizon tool-use tasks. This work demonstrates that a theoretically sound, stable approach without a critic model can be more efficient and effective than traditional PPO.
+Our empirical results, supported by independent validation from multiple third-party systems, confirmed the effectiveness of this specialized approach. \ours demonstrated competitive general RLHF results and stronger held-out reasoning scores. The basic variant improved held-out performance in the small-data setting, while \varn outperformed both GRPO and full-critic PPO in complex, long-horizon tool-use tasks. This work demonstrates that a theoretically sound, stable approach without a critic model can be more efficient and effective than traditional PPO.

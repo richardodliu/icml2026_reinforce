@@ -17,45 +17,44 @@ The key innovation is our normalization strategy. Instead of a non-existent (for
 \begin{equation}\label{eq:batch_norm}
 A_{q,o_t}^{\text{norm}} = \frac{A_{q,o_t} - \text{mean}\left(A|A \in \mathcal{D}_{\text{batch}}\right)}{\text{std}\left(A|A \in \mathcal{D}_{\text{batch}}\right) + \epsilon}
 \end{equation}
-The global normalization is the core of \ours. As the global batch size $\mathcal{D}_{\text{batch}}$ is typically large (e.g., 1024 or more), the $\text{mean}(\cdot)$ and $\text{std}(\cdot)$ converge to stable constants. It makes the gradient estimator \textit{effectively less biased} (as $N \to \infty$) and robust to outliers, drastically improving training stability (see Appendix \Cref{appendix:whyglobal}). 
-The algorithm for the efficient $k=1$ case is detailed in Algorithm \Cref{algo:main}.
+The global normalization is the core of \ours. Pooling a large rollout batch (e.g., 1024 responses) replaces separate small-group scales with shared statistics. Under independent sampling, sample moments converge to population values (Appendix~\ref{appendix:proof_GRPO}); this is not a general unbiased-policy-gradient guarantee. Valid token positions exclude padding, and the moments remain fixed during rollout reuse.
+The efficient $k=1$ case is detailed in \Cref{algo:main}.
 
 
 \subsection{Local Baseline}
 For more complex tasks, such as multi-step reasoning, sampling multiple responses per prompt ($k > 1$) can be beneficial \citep{yue2025vapo}. To this end, we introduce \varn. This variant combines the benefits of group-sampling with the stability of global normalization. The advantage calculation is a two-step process:
 \begin{itemize}
     \item \textbf{Group Mean Subtraction for Reshaping}: We first subtract the group mean reward. It serves as a local baseline, reshaping rewards to be robust to different reward scales (e.g., $0/1$ vs. $-1/1$).
-    \begin{equation}
-     A'_{q,o_t} = R_{q,o_t} - \mathrm{mean}_{\text{group}}(R_{q,o_t})
+    \begin{equation}\label{eq:group_center}
+     A'_{q,o_t^{(i)}} = r(q,o^{(i)}) - \frac{1}{k}\sum_{j=1}^k r(q,o^{(j)})
     \end{equation}
     \item \textbf{Global Batch Normalization for Stability}: We then normalize this initial advantage using the \textbf{global batch statistics}, not the unstable local group statistics.
     \begin{equation}
      A_{q,o_t}^{\text{norm}} = \frac{A'_{q,o_t} - \mathrm{mean}_{\text{batch}}(A')}{\text{std}_{\text{batch}}(A') + \epsilon}
     \end{equation}
 \end{itemize}
-This combination avoids the bias and instability inherent in the local standard deviation in GRPO.
+This separates reward centering from scale estimation; the inclusive group baseline equals $(k-1)/k$ times RLOO (Appendix~\ref{appendix:design}).
 
-Furthermore, this variant employs a separate KL loss term for regularization. We adopt the $k_{2}$ estimator. As shown in Appendix \Cref{appendix:kl_design}, the $k_{2}$ estimator provides a stable,  unbiased gradient for the Reverse KL divergence, unlike the $k_{3}$ estimator (used in GRPO), which is an unstable approximation \citep{liu2025rethinking}. The final objective is:
-\begin{equation}
-\mathcal{L} = \mathcal{L}_{\text{PPO}}(A^{\text{norm}}) - \lambda \cdot \mathcal{J}_{k_{2}{\,\text{as loss}}}(\theta)
+Furthermore, this variant employs a separate $k_2$ KL regularizer. At a fixed context with on-policy actions held fixed during differentiation, its expected pointwise gradient equals the reverse-KL gradient~\citep{liu2025rethinking}. This equivalence concerns a gradient surrogate, not KL values; unweighted old-policy rollout reuse is off-policy (Appendix~\ref{appendix:kl_design}). The maximized objective is:
+\begin{equation}\label{eq:baseline_loss}
+\mathcal{L} = \mathcal{L}_{\text{PPO}}(A^{\text{norm}}) - \lambda\,\mathbb{E}_{o\sim\pi_{\mathrm{old}}}\left[\frac{1}{|o|}\sum_t \frac12\left(\log\frac{\pi_\theta(o_t\mid q,o_{<t})}{\pi_{ref}(o_t\mid q,o_{<t})}\right)^2\right].
 \end{equation}
-where $\mathcal{J}_{k_{2}\,\text{as loss}}(\theta)=\mathbb{E}[\frac{1}{2}(\log\frac{\pi_{\theta}}{\pi_{ref}})^{2}]$.
 
 \subsection{Relationship with PPO}
-\varn can be viewed as a simplified and more stable variant of PPO. It is formally equivalent to a PPO agent where: (1) The critic network is removed; (2) The GAE parameters are set to $\lambda=1$ and $\gamma=1$; and (3) A two-step global batch normalization is used as the baseline instead of a learned value function.
+Both variants retain PPO clipping without a learned critic. Setting $V=0$ and $\gamma=\lambda_{\mathrm{GAE}}=1$ reduces GAE to Monte Carlo returns, the structure used by the basic variant before normalization. \varn additionally uses prompt-specific reward centering and a separate KL loss; these changes distinguish it from standard actor--critic PPO.
 
 \subsection{Implementation Tricks} \label{appendix:tricks}
 \paragraph{Token-level Advantage}
-The advantage $A_{q,o_t}^{norm}$ is computed at the token level. For $t < T$ (where $T$ is the sequence length), the advantage is set to 0. For the final token $t=T$, the advantage is the normalized reward $A_{q,o_T}^{norm}$, which is the standard practice in RLHF for LLMs.
+The task's immediate reward is zero before termination, but its undiscounted return contributes to every preceding response token in \Cref{eq:adv}. \varn broadcasts its centered terminal reward to valid response positions. The stated objective averages token losses within each response and then across responses, as specified in Appendix~\ref{appendix:batch_mean}.
 
 \paragraph{Batch Construction}
-For REINFORCE++ ($k=1$), a global batch of size $N$ comprises $N$ distinct prompts. For \varn ($k=4$), a global batch of size $N=1024$ might contain $ 1024/4=256$ unique prompts. The global mean/std are computed over all $N$ samples.
+For REINFORCE++ ($k=1$), a global batch of size $N$ comprises $N$ distinct prompts. For \varn ($k=4$), a global batch of size $N=1024$ might contain $ 1024/4=256$ unique prompts. The global moments pool valid response positions across the rollout batch.
 
 \paragraph{Mini-Batch Updates}
 To enhance training efficiency, we implement mini-batch updates with the following characteristics:
 \begin{itemize}[leftmargin=*]
     \item \textbf{Batch Processing:} Data is processed in smaller, manageable chunks rather than full-batch updates.
-    \item \textbf{Multiple Updates:} Each mini-batch allows for multiple parameter updates, improving convergence rates.
+    \item \textbf{Multiple Updates:} Reuse detached advantages and old-policy probabilities over $E$ optimization epochs.
     \item \textbf{Stochastic Optimization:} Introduces beneficial randomness for better generalization.
 \end{itemize}
 
@@ -63,22 +62,22 @@ To enhance training efficiency, we implement mini-batch updates with the followi
 
 We implement comprehensive reward processing to stabilize training:
 \begin{itemize}[leftmargin=*]
-    \item \textbf{Normalization:} Standardizes rewards using z-score normalization (our global normalization) to mitigate outliers.
+    \item \textbf{Normalization:} Uses a shared z-score scale across the batch; standardization alone does not remove outliers.
     \item \textbf{Clipping:} Constrains reward values within predefined bounds to avoid instability.
     \item \textbf{Scaling:} Applies appropriate scaling factors for numerical stability during updates.
 \end{itemize}
 
 \subsection{Why Use Global Batch Normalization?} \label{appendix:whyglobal}
 
-We observe that as \( N \to \infty \), the denominator of the estimator converges to the constant \( \sigma \), and the bias in the numerator vanishes. The insight underlies our decision to adopt global batch normalization in both \textsc{REINFORCE++} and \textsc{REINFORCE++}\textsubscript{\textit{w/} Baseline}, as the global batch size ($N_{global}$) is typically much larger (e.g., 1024) than the group batch size ($N_{group}$, e.g., 4 or 8) in practice. As $N_{global} \to \infty$, the sample statistics $\mu_b$ and $\sigma_b$ converge to true constants, making the estimator effectively unbiased.
+Omitting the numerical stabilizer, under independent sampling with nonzero population variance, normalization approaches the population-standardized target as $N\to\infty$ (Appendix~\ref{appendix:proof_GRPO}). This motivates global normalization in both \textsc{REINFORCE++} and \textsc{REINFORCE++}\textsubscript{\textit{w/} Baseline}: a batch of 1024 responses pools more observations than groups of 4 or 8. Token dependence and repeated responses limit the effective independent sample count. The result explains the scale estimate, rather than proving that every clipped, reused-rollout policy gradient is unbiased.
 
 \subsection{Summary}
 
 To address these challenges, we propose \ours, a method centered on a simple yet powerful idea: \textbf{Global Advantage Normalization}, without a critic. Instead of normalizing within a prompt's local group, \ours normalizes the advantage function across the \textit{entire global training batch}. The overall approach is:
 \begin{itemize}
-    \item \textbf{Theoretical Stability}: As the global batch size grows (e.g., $N=1024$), the batch mean and standard deviation converge to constants, resulting in an \textit{effectively unbiased} (bias vanishes as $N \to \infty$) and low-variance advantage estimator (see Appendix \Cref{appendix:whyglobal}).
+    \item \textbf{Theoretical Stability}: With independent sampling, increasing the batch size improves population-moment estimation. Finite-sample effects and trajectory dependence remain relevant (Appendix~\ref{appendix:proof_GRPO}).
     \item \textbf{Training Efficiency}: It retains the critic-free architecture, significantly reducing computational and memory overhead compared to PPO.
-    \item \textbf{Strong Generalization}: Using a global baseline prevents overfitting to specific prompts and encourages a more robust policy.
+    \item \textbf{Strong Generalization}: Using a shared scale is associated with improved held-out reasoning results in our evaluated settings.
 \end{itemize}
 
 \begin{algorithm}
@@ -93,7 +92,7 @@ To address these challenges, we propose \ours, a method centered on a simple yet
     \State Compute rewards $r_i$ for each sampled $o_i$ using $R$
     \State Compute advantage $A_{q,o_t}$ via \Cref{eq:adv}
     \State Normalize advantages globally across $\mathcal{D}_{batch}$ to get $A_{q,o_t}^{\text{norm}}$ via \Cref{eq:batch_norm}
-    \For {iteration $= 1, \ldots, k$}
+    \For {iteration $= 1, \ldots, E$}
         \State Update $\pi_{\theta}$ by maximizing the objective in \Cref{eq:ppo} using $A_{q,o_t}^{\text{norm}}$
     \EndFor
 \EndFor

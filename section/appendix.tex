@@ -1,173 +1,161 @@
-\begin{center}
-    {\Large \bfseries Appendix}
-\end{center}
+\section{Response-wise loss reduction and implementation}\label{appendix:batch_mean}
+\textbf{The objective in \Cref{eq:ppo} uses a mean over valid tokens within each response, followed by a mean over responses in the batch.} This section specifies the reduction independently of advantage normalization.
 
-\section{Proof: The GRPO Advantage Estimator is Biased} \label{appendix:proof_GRPO}
+Let $m_{i,t}\in\{0,1\}$ indicate a valid response token included in the policy loss, and let $n_i=\sum_t m_{i,t}>0$. For $B$ responses, the policy loss is
+\begin{equation}
+ \boxed{
+ L_{\mathrm{PG}}(\theta)=\frac{1}{B}\sum_{i=1}^{B}
+ \left[\frac{1}{n_i}\sum_t m_{i,t}\,\ell_{i,t}(\theta)\right],
+ \qquad
+ \ell_{i,t}(\theta)=-f_{i,t}(\theta,\operatorname{sg}[\widehat A_{i,t}]).
+ }
+ \label{eq:batch_mean}
+\end{equation}
+Here $\widehat A$ denotes $A^{\mathrm{norm}}$,  $f$ is the clipped surrogate in \Cref{eq:ppo}, and $\operatorname{sg}$ denotes stop-gradient. Padding and positions outside the response loss mask do not enter the numerator or token count. The separate $k_2$ term in \cref{eq:baseline_loss} uses the same reduction.
 
-\subsection{Assumptions and Settings}
-We observe \(N\) rewards \(r_i\) for a prompt, and assume the true baseline is \(\theta\), such that
-\[
-r_i = \theta + \epsilon_i, \quad \epsilon_i \sim \mathcal{N}(0, \sigma^2),\quad i=1,\dots,N,
-\]
-with all advantage value \(\epsilon_i\) independent. Define
-\[
-\bar\epsilon = \frac{1}{N} \sum_{j=1}^N \epsilon_j, \quad
-D = \sqrt{ \frac{1}{N} \sum_{j=1}^N (\epsilon_j - \bar\epsilon)^2 }, \quad
-A_i = \frac{ \epsilon_i - \bar\epsilon }{D }.
-\]
-We will prove the following:
+\paragraph{Response weighting.}
+Each response has outer weight $1/B$, and each valid token within response $i$ has weight $1/(Bn_i)$. This differs from dividing the sum of all token losses by the total number of valid tokens:
+\begin{equation}
+ L_{\mathrm{token}}=\frac{\sum_{i,t}m_{i,t}\ell_{i,t}}{\sum_i n_i}.
+\end{equation}
+The latter weights each response in proportion to its length. The two reductions agree when all responses have equal length. With a fixed number $k$ of responses per prompt, batch averaging is also equivalent to averaging the per-response losses within each prompt and then across prompts.
 
-\begin{theorem}
-For any finite \(N \ge 2\), the advantage estimator \(A_i\) is biased:
-\[
-\mathbb{E}[A_i \mid \epsilon_i] \ne \epsilon_i.
-\]
-\end{theorem}
+\paragraph{Minibatches and accumulation.}
+For a minibatch $\mathcal M$, replace $B$ by $|\mathcal M|$ in \cref{eq:batch_mean}. To recover the same mean when combining uneven microbatches or distributed shards, their loss sums must be weighted by their response counts. The normalization moments are associated with the rollout batch; changing the partition into minibatches does not change the definition of the already computed advantages.
 
+\paragraph{Terminal reward and token returns.}
+For the basic variant, write $d_{i,t}=\log(\pi_{\mathrm{old}}/\pi_{ref})$ at the sampled token. The immediate reward can be written as
+\begin{equation}
+ \widetilde r_{i,t}=\mathbf{1}\{t=T_i\}r(q_i,o_i)-\beta d_{i,t}.
+\end{equation}
+With unit discount, its return is $\sum_{u=t}^{T_i}\widetilde r_{i,u}=A_{q_i,o_{i,t}}$ from \Cref{eq:adv}. Thus, a terminal task reward contributes to the return at every preceding response position. For \varn, the group-centered terminal reward in \cref{eq:group_center} is broadcast to response positions before global normalization.
+
+
+\section{Finite-sample properties of normalization}\label{appendix:normalization}\label{appendix:proof_GRPO}
+We analyze a scalar model to make the effect of estimating normalization statistics from the same samples explicit. Let
+\begin{equation}
+ r_i=\mu+\epsilon_i,\qquad \epsilon_i\overset{\mathrm{i.i.d.}}{\sim}\mathcal N(0,\sigma^2),\qquad \sigma>0,
+\end{equation}
+and define $\bar\epsilon=N^{-1}\sum_i\epsilon_i$,
+$D_N^2=N^{-1}\sum_i(\epsilon_i-\bar\epsilon)^2$, and
+$Z_{i,N}=(\epsilon_i-\bar\epsilon)/D_N$ for $N\geq2$. The population-standardized target is $\epsilon_i/\sigma$. We omit the numerical stabilizer for this analysis; $D_N>0$ almost surely under the stated model.
+
+\begin{proposition}[Finite-sample bound]\label{prop:bound}
+For any nonconstant sample of size $N\geq2$, $|Z_{i,N}|\leq\sqrt{N-1}$.
+Consequently, under the Gaussian model, $\mathbb{E}[Z_{i,N}\mid\epsilon_i]$ cannot equal $\epsilon_i/\sigma$ almost surely for finite $N$.
+\end{proposition}
 \begin{proof}
-We can prove our findings with the following steps:\\
-\textbf{Step 1: Numerator Bias}
-We rewrite the numerator:
-\[
-\epsilon_i - \bar\epsilon = \left(1 - \frac{1}{N} \right) \epsilon_i - \frac{1}{N} \sum_{j \ne i} \epsilon_j.
-\]
-Since the \(\epsilon_j\) for \(j \ne i\) are zero-mean and independent of \(\epsilon_i\),
-\[
-\mathbb{E}[\epsilon_i - \bar\epsilon \mid \epsilon_i] = \left(1 - \frac{1}{N} \right) \epsilon_i.
-\]
-
-\textbf{Step 2: Denominator Depends on \(\epsilon_i\)}
-
-\textit{(a) Compute \(\mathbb{E}[D^2 \mid \epsilon_i]\):}
-By definition,
-\[
-D^2 = \frac{1}{N} \sum_{j=1}^N (\epsilon_j - \bar\epsilon)^2 = \frac{1}{N} \sum_{j=1}^N \epsilon_j^2 - \bar\epsilon^2.
-\]
-Since
-\[
-\bar\epsilon = \frac{1}{N} \left( \epsilon_i + \sum_{j \ne i} \epsilon_j \right),
-\]
-and conditioning on \(\epsilon_i\) keeps the \(\epsilon_j\), \(j \ne i\), i.i.d.\ \(\mathcal{N}(0, \sigma^2)\), we obtain:
-\[
-\mathbb{E} \left[ \sum_{j=1}^N \epsilon_j^2 \mid \epsilon_i \right] = \epsilon_i^2 + (N-1) \sigma^2,
-\]
-\begin{align*}
-\mathbb{E}[\bar\epsilon^2 \mid \epsilon_i]
-&= \frac{1}{N^2} \mathbb{E} \left[ \left( \epsilon_i + \sum_{j \ne i} \epsilon_j \right)^2 \Big| \epsilon_i \right] \\
-&= \frac{1}{N^2} \left( \epsilon_i^2 + 2 \epsilon_i \cdot \underbrace{\mathbb{E}\left[ \sum_{j \ne i} \epsilon_j \right]}_{0} + \mathbb{E} \left[ \left( \sum_{j \ne i} \epsilon_j \right)^2 \right] \right) \\
-&= \frac{\epsilon_i^2 + (N-1) \sigma^2}{N^2}.
-\end{align*}
-Subtracting:
-\begin{align}
-\mathbb{E}[D^2 \mid \epsilon_i]
-&= \frac{1}{N} (\epsilon_i^2 + (N-1) \sigma^2) - \frac{\epsilon_i^2 + (N-1)\sigma^2}{N^2} \nonumber \\
-&= \underbrace{\frac{(N-1)^2}{N^2} \sigma^2}_{\alpha} + \underbrace{\frac{N-1}{N^2}}_{\beta} \epsilon_i^2 = \alpha + \beta \epsilon_i^2.
-\label{eq:condD2}
-\end{align}
-
-\textit{(b) \(g(\epsilon_i)\) is Not Constant:}
-Let \(g(\epsilon_i) = \mathbb{E}\left[1/D \mid \epsilon_i \right]\) and \(\mu(\epsilon_i) = \mathbb{E}[D^2 \mid \epsilon_i] = \alpha + \beta \epsilon_i^2\).
-
-Using Taylor expansion of \(f(x) = 1/\sqrt{x}\) around \(x_0 = \mu(\epsilon_i)\):
-\[
-f(x) = \frac{1}{\sqrt{x_0}} - \frac{1}{2} \frac{x-x_0}{x_0^{3/2}} + \frac{3}{8} \frac{(x-x_0)^2}{x_0^{5/2}} + O((x-x_0)^3)
-\]
-
-Taking the conditional expectation:
-\[
-\begin{aligned}
-g(\epsilon_i) 
-&= \mathbb{E}[1/D \mid \epsilon_i] 
-= \mathbb{E}\left[\frac{1}{\sqrt{D^2}} \mid \epsilon_i\right] 
-= \mathbb{E}\left[f(D^2) \mid \epsilon_i\right], \quad \text{where } f(x) = \frac{1}{\sqrt{x}} \\
-&\approx f(\mu(\epsilon_i)) + f'(\mu(\epsilon_i)) \cdot \mathbb{E}[D^2 - \mu(\epsilon_i) \mid \epsilon_i] + \frac{f''(\mu(\epsilon_i))}{2} \cdot \mathbb{E}[(D^2 - \mu(\epsilon_i))^2 \mid \epsilon_i] \\
-&= \frac{1}{\sqrt{\mu(\epsilon_i)}} 
-- \frac{1}{2 \mu(\epsilon_i)^{3/2}} \cdot \underbrace{\mathbb{E}[D^2 - \mu(\epsilon_i) \mid \epsilon_i]}_{=\,0} 
-+ \frac{3}{8 \mu(\epsilon_i)^{5/2}} \cdot \text{Var}(D^2 \mid \epsilon_i) \\
-&= \frac{1}{\sqrt{\mu(\epsilon_i)}} + \frac{3}{8} \cdot \frac{\text{Var}(D^2 \mid \epsilon_i)}{\mu(\epsilon_i)^{5/2}}
-\end{aligned}
-\]
-
-Since \(\mu(\epsilon_i) = \alpha + \beta \epsilon_i^2\) with \(\beta > 0\), the first term alone shows that \(g(\epsilon_i)\) depends on \(\epsilon_i^2\) and hence is not constant.
-
-\textbf{Step 3: Putting It Together}
-Decomposing \(A_i\),
-\[
-A_i = \frac{\epsilon_i - \bar\epsilon}{D} = \left(1 - \frac{1}{N} \right) \frac{\epsilon_i}{D} - \left( \frac{1}{N} \sum_{j \ne i} \epsilon_j \right) \cdot \frac{1}{D}.
-\]
-For fixed \(\epsilon_i\), the conditional distribution of \(\sum_{j \ne i} \epsilon_j\) is symmetric about zero, while \(1/D\) is always positive. Thus:
-\[
-\mathbb{E} \left[ \left( \frac{-1}{N} \sum_{j \ne i} \epsilon_j \right) \cdot \frac{1}{D} \Big| \epsilon_i \right] = 0.
-\]
-It follows that
-\[
-\mathbb{E}[A_i \mid \epsilon_i] = \left(1 - \frac{1}{N} \right) \epsilon_i \cdot \mathbb{E} \left[ \frac{1}{D} \mid \epsilon_i \right] = \left(1 - \frac{1}{N} \right) \epsilon_i \cdot g(\epsilon_i).
-\]
-
-\textbf{Step 4: Concluding the Bias}
-If \(A_i\) were unbiased, we would have:
-\[
-\left(1 - \frac{1}{N} \right) g(\epsilon_i) \equiv 1 \quad \Rightarrow \quad g(\epsilon_i) \equiv \frac{N}{N-1},
-\]
-which contradicts Step 2. Therefore, for any finite \(N \ge 2\),
-\[
-\mathbb{E}[A_i \mid \epsilon_i] \ne \epsilon_i.
-\]
-Hence \(A_i\) is a biased estimator.
-
+Set $x_j=\epsilon_j-\bar\epsilon$, so $\sum_jx_j=0$. By Cauchy--Schwarz,
+\begin{equation}
+ x_i^2=\left(\sum_{j\ne i}x_j\right)^2
+ \leq(N-1)\sum_{j\ne i}x_j^2.
+\end{equation}
+Therefore $\sum_jx_j^2\geq Nx_i^2/(N-1)$, giving
+$Z_{i,N}^2=Nx_i^2/\sum_jx_j^2\leq N-1$.
+The conditional expectation obeys the same bound, whereas
+$|\epsilon_i|/\sigma>\sqrt{N-1}$ has positive probability for a Gaussian variable. Equality with the standardized target cannot hold almost surely.
 \end{proof}
 
-\section{KL Penalty Design}\label{appendix:kl_design}
+\paragraph{Conditional moments of the numerator and denominator.}
+The centered numerator satisfies
+\begin{equation}
+ \mathbb{E}[\epsilon_i-\bar\epsilon\mid\epsilon_i]
+ =\left(1-\frac1N\right)\epsilon_i.
+\end{equation}
+Using $D_N^2=N^{-1}\sum_j\epsilon_j^2-\bar\epsilon^2$ and independence,
+\begin{align}
+ \mathbb{E}[\bar\epsilon^2\mid\epsilon_i]
+ &=\frac{\epsilon_i^2+(N-1)\sigma^2}{N^2},\\
+ \mathbb{E}[D_N^2\mid\epsilon_i]
+ &=\frac{(N-1)^2}{N^2}\sigma^2+\frac{N-1}{N^2}\epsilon_i^2.
+ \label{eq:condD2}
+\end{align}
+These identities show the conditional dependence of the normalization statistics on the included observation. They do not permit replacing the expectation of a ratio by a ratio of expectations; Proposition~\ref{prop:bound} establishes the finite-sample discrepancy directly.
 
-In non-critic algorithms like \varn, a KL divergence term is often added as a separate loss to constrain the policy $\pi_{\theta}$ from deviating too far from a reference policy $\pi_{ref}$. In practice, this expectation is estimated using samples, and three familiar estimators are used.
+\paragraph{An exact two-response example.}
+For $N=2$, $D_2=|\epsilon_1-\epsilon_2|/2$ and
+$Z_{1,2}=\operatorname{sign}(\epsilon_1-\epsilon_2)$ almost surely. Thus,
+\begin{equation}
+ \mathbb{E}[Z_{1,2}\mid\epsilon_1=x]=2\Phi(x/\sigma)-1,
+ \label{eq:two_sample}
+\end{equation}
+where $\Phi$ is the standard normal cumulative distribution function. This bounded, nonlinear function differs from the linear population-standardized value $x/\sigma$. It illustrates how a small group changes the reward scale through self-normalization.
 
-Given the importance ratio $\delta(y) = \pi_{ref}(y|\cdot) / \pi_{\theta}(y|\cdot)$ (where $\pi_{\theta}$ is the sampling policy and $\pi_{ref}$ is the reference):
-\begin{itemize}
-    \item $k_{1}(y) = -\log \delta(y) = \log \frac{\pi_{\theta}(y|\cdot)}{\pi_{ref}(y|\cdot)}$
-    \item $k_{2}(y) = \frac{1}{2}(\log \delta(y))^{2} = \frac{1}{2}\left(\log \frac{\pi_{ref}(y|\cdot)}{\pi_{\theta}(y|\cdot)}\right)^{2}$
-    \item $k_{3}(y) = \delta(y) - 1 - \log \delta(y)$
-\end{itemize}
+\begin{proposition}[Large-sample limit]\label{prop:limit}
+Under the Gaussian model, for any fixed $i$, $Z_{i,N}\to\epsilon_i/\sigma$ almost surely and in $L^1$ as $N\to\infty$. In particular,
+\begin{equation}
+ \mathbb{E}\left[\left|\mathbb{E}[Z_{i,N}\mid\epsilon_i]-\epsilon_i/\sigma\right|\right]\longrightarrow0.
+\end{equation}
+\end{proposition}
+\begin{proof}
+The strong law gives $\bar\epsilon\to0$ and $D_N^2\to\sigma^2$ almost surely, establishing the first limit. By exchangeability and $\sum_{j=1}^{N}Z_{j,N}^2=N$, we have $\mathbb{E}[Z_{i,N}^2]=1$ for every $N$. This uniform second-moment bound implies uniform integrability, so the almost-sure convergence also holds in $L^1$. Conditional Jensen's inequality gives
+\begin{equation}
+ \mathbb{E}\left[\left|\mathbb{E}[Z_{i,N}-\epsilon_i/\sigma\mid\epsilon_i]\right|\right]
+ \leq\mathbb{E}\left[|Z_{i,N}-\epsilon_i/\sigma|\right]\to0.
+\end{equation}
+\end{proof}
 
-We analyze which of these (k1, $k_2$, or $k_3$) is the correct choice when used as a separate loss term.
+\paragraph{Numerical stabilizer.}
+With a fixed stabilizer $\eta>0$, $(\epsilon_i-\bar\epsilon)/(D_N+\eta)$ converges instead to $\epsilon_i/(\sigma+\eta)$. The unstabilized population-standardization limit applies when the stabilizer is omitted or tends to zero. The finite-sample bound remains valid with a nonnegative stabilizer for nonconstant samples; constant samples have zero numerator and return zero when the stabilizer is positive.
 
-\paragraph{Theoretical Reverse KL Gradient}
-We are training with samples from $\pi_{\theta}$, so we are approximating the \textbf{Reverse KL (RKL)}, $D_{KL}(\pi_{\theta}||\pi_{ref})$. The practical policy gradient for RKL is (more details are in \citep{liu2025rethinking}):
-$$
-\nabla_{\theta}\mathcal{J}_{RKL}(\theta) = \mathbb{E}_{y\sim\pi_{\theta}(\cdot|x)}\left[\left(\log\frac{\pi_{\theta}(y|x)}{\pi_{ref}(y|x)}\right)\nabla_{\theta}\log \pi_{\theta}(y|x)\right]
-$$
+\paragraph{Implications for global normalization.}
+The propositions isolate the effect of normalization sample size: estimated moments approach their population values as the number of independent observations grows. A shared batch scale can use observations across many prompt groups, rather than estimating a separate scale from each small group. For grouped or token-level data, the interpretation depends on the number of independently sampled trajectories and their dependence structure.
 
-\paragraph{k1 Analysis}
-We can \textbf{exclude k1} as a loss term. Its gradient does not depend on $\pi_{ref}$ and thus provides no constraining effect. The loss $\mathcal{J}_{k{1}} = \mathbb{E}_{y\sim\pi_{\theta}}[\log \pi_{\theta} - \log \pi_{ref}]$ differentiates to $\nabla_{\theta}\mathcal{J}_{k{1}} = \mathbb{E}_{y\sim\pi_{\theta}}[\nabla_{\theta}\log \pi_{\theta}]$, as the $\pi_{ref}$ term vanishes. (Note: k1 \emph{is} used inside the reward for REINFORCE++, but not as a separate loss term).
+\paragraph{Relationship to baselines and gradients.}
+For an unscaled group mean, $\mathbb{E}[r_i-\bar r_q\mid r_i,q]=(1-1/k)(r_i-\mu_q)$ when responses are conditionally independent with mean reward $\mu_q$. This is the same factor appearing in \Cref{eq:rloo_relation}. The propositions concern convergence to a standardized scalar target, distinct from unbiasedness of a policy-gradient estimator. Their role is to explain the normalization mechanism under explicit sampling assumptions.
 
-\paragraph{$k_2$ Analysis}
-The $k_2$ estimator provides a gradient that is \textbf{equivalent to the theoretical Reverse KL gradient}.
 
-The $k_2$ loss is (noting that $(\log \frac{\pi_{\theta}}{\pi_{ref}})^2 = (\log \frac{\pi_{ref}}{\pi_{\theta}})^2$):
-$$
-\mathcal{J}_{k{2}as~loss}(\theta)=\mathbb{E}_{y\sim\pi_{\theta}(\cdot|x)}\left[\frac{1}{2}\left(\log\frac{\pi_{\theta}(y|x)}{\pi_{ref}(y|x)}\right)^{2}\right]
-$$
-Differentiating the term inside the expectation gives:
-\begin{align*}
-\nabla_{\theta}\left[\frac{1}{2}\left(\log\frac{\pi_{\theta}}{\pi_{ref}}\right)^{2}\right] &= \left(\log\frac{\pi_{\theta}}{\pi_{ref}}\right) \cdot \nabla_{\theta}\left(\log\frac{\pi_{\theta}}{\pi_{ref}}\right) \\
-&= \left(\log\frac{\pi_{\theta}}{\pi_{ref}}\right) \cdot \nabla_{\theta}(\log \pi_{\theta} - \log \pi_{ref}) \\
-&= \left(\log\frac{\pi_{\theta}}{\pi_{ref}}\right)\nabla_{\theta}\log \pi_{\theta}
-\end{align*}
-When we take the expectation over $y \sim \pi_{\theta}$, the gradient of the $k_2$ loss becomes:
-$$
-\mathbb{E}_{y\sim\pi_{\theta}}\left[\left(\log\frac{\pi_{\theta}(y|x)}{\pi_{ref}(y|x)}\right)\nabla_{\theta}\log \pi_{\theta}(y|x)\right]
-$$
-This \emph{perfectly matches} the practical RKL gradient. Therefore, $k_2$ is the theoretically correct and stable choice.
+\section{KL regularization as a gradient surrogate}\label{appendix:kl}\label{appendix:kl_design}
+For a fixed context, write $p_\theta(y)=\pi_\theta(y\mid h)$, $q(y)=\pi_{\mathrm{ref}}(y\mid h)$, and $z(y)=\log[p_\theta(y)/q(y)]$. Assume common support and sufficient regularity to interchange differentiation and expectation. The reverse KL is
+\begin{equation}
+ D_{\mathrm{KL}}(p_\theta\|q)=\mathbb{E}_{y\sim p_\theta}[z(y)],
+ \qquad
+ \nabla_\theta D_{\mathrm{KL}}(p_\theta\|q)
+ =\mathbb{E}_{p_\theta}[z(y)\nabla_\theta\log p_\theta(y)],
+ \label{eq:rkl_gradient}
+\end{equation}
+using $\mathbb{E}_{p_\theta}[\nabla_\theta\log p_\theta]=0$.
 
-\paragraph{$k_3$ Analysis}
-The $k_3$ gradient is problematic. It is theoretically an estimator for the \textbf{Forward KL} ($KL(\pi_{ref}||\pi_{\theta})$), not the Reverse KL. There is a mismatch: we are sampling from $\pi_{\theta}$, but the Forward KL gradient requires sampling from $\pi_{ref}$.
+\paragraph{Value estimators and differentiated losses.}
+The common expressions are
+\begin{equation}
+ k_1(z)=z,\qquad k_2(z)=\tfrac12 z^2,\qquad k_3(z)=e^{-z}-1+z.
+\end{equation}
+Both $k_1$ and $k_3$ have expectation $D_{\mathrm{KL}}(p_\theta\|q)$ under on-policy sampling, since $\mathbb{E}_{p_\theta}[e^{-z}]=1$. When sampled actions are treated as fixed during automatic differentiation, their pointwise gradients differ:
+\begin{equation}
+\begin{aligned}
+ \nabla_\theta k_1 &=\nabla_\theta\log p_\theta,\\
+ \nabla_\theta k_2 &=z\nabla_\theta\log p_\theta,\\
+ \nabla_\theta k_3 &=(1-q/p_\theta)\nabla_\theta\log p_\theta.
+\end{aligned}
+\label{eq:kl_pointwise}
+\end{equation}
+The on-policy expectation of the $k_2$ pointwise gradient is exactly \cref{eq:rkl_gradient}. This is the gradient-surrogate interpretation used for the separate KL term in \varn~\citep{liu2025rethinking}. It is distinct from differentiating the entire expectation $\mathbb{E}_{p_\theta}[k_2]$, which also differentiates the sampling distribution.
 
-This method, used in GRPO, suffers from two major issues:
-\begin{itemize}
-    \item \textbf{Extremely High Variance:} When $\pi_{\theta}(y)$ becomes tiny for a sample $y$ where $\pi_{ref}(y)$ is moderate, the importance weight $\frac{\pi_{ref}(y)}{\pi_{\theta}(y)}$ in the gradient estimator explodes, leading to "infinite variance".
-    \item \textbf{Numerical Instability:} It requires computing $p/q$ via $\exp(\log p - \log q)$, which is prone to overflow.
-\end{itemize}
-The result explains why methods using $k$ require frequent resetting of $\pi_{ref}$ to prevent the policies from diverging and the $k_3$ estimator from becoming unstable.
+Under the same fixed-context assumptions, the expected pointwise gradient of $k_1$ is zero. The $k_1$ expression can instead enter the reward and act as a detached score-function coefficient, as in the returns used by the basic variant. The expected pointwise gradient of $k_3$ equals $-\mathbb{E}_q[\nabla_\theta\log p_\theta]$, the forward-KL gradient. Its value-estimation and loss-gradient roles should therefore be distinguished.
 
-\paragraph{Conclusion}
-Based on this analysis, the $k_2$ estimator is the optimal choice for the KL loss term, as it accurately and stably estimates the Reverse KL gradient. We therefore use the $k_2$ estimator in our \varn algorithm.
-% --- END OF MODIFIED SECTION ---
+\paragraph{Numerical sensitivity.}
+The $k_3$ pointwise gradient contains the importance ratio $q/p_\theta$, which can become large when the current policy assigns low probability to actions favored by the reference. Computing this ratio as $\exp(-z)$ can also overflow for sufficiently negative $z$. These are potential variance and numerical concerns, not a general proof of infinite variance or a requirement to reset the reference policy. The $k_2$ surrogate avoids this exponential ratio, but its gradient still depends on the log ratio and score function; the identity above alone does not guarantee low variance or training stability.
+
+\paragraph{Rollout reuse.}
+The on-policy identities apply when the sampled actions follow the current policy. For actions sampled from $p_{\mathrm{old}}$, a fixed-context importance-weighted gradient satisfies
+\begin{equation}
+ \mathbb{E}_{p_{\mathrm{old}}}\left[
+ \frac{p_\theta(y)}{p_{\mathrm{old}}(y)}z(y)\nabla_\theta\log p_\theta(y)
+ \right]=\nabla_\theta D_{\mathrm{KL}}(p_\theta\|q).
+\end{equation}
+The practical separate loss in \cref{eq:baseline_loss} is the unweighted $k_2$ surrogate on the rollout data. Its exact gradient-equivalence interpretation applies at the on-policy point; subsequent optimization uses it as a surrogate. For autoregressive policies, the fixed-context statement concerns the conditional next-token distribution.
+
+
+\section{Design implications and sampling budgets}\label{appendix:design}
+\paragraph{Local baseline and global scale.}
+For a prompt with $k>1$ responses, let $C_{q,i}=r_i-k^{-1}\sum_j r_j$. Then
+\begin{equation}\label{eq:rloo_relation}
+ C_{q,i}=\frac{k-1}{k}\left(r_i-\frac{1}{k-1}\sum_{j\ne i}r_j\right)
+ =\frac{k-1}{k}A_i^{\mathrm{RLOO}}.
+\end{equation}
+The group baseline compares a response with alternatives to the same prompt; global scaling supplies a shared scale across prompts. Homogeneous groups have zero centered task-reward signal. This separates reward centering from prompt-specific standard-deviation normalization.
+\paragraph{Response budget.}
+At fixed response count $B$, single-response sampling covers up to $B$ prompts; grouped sampling covers $B/k$. Larger groups trade prompt coverage for exploration of each prompt. This does not establish a runtime or memory ratio: response length, batching, optimizer state, and rollout implementation also matter.
+\paragraph{Evaluation and attribution.}
+The tool-use metric average@32 averages success across 32 sampled attempts; it differs from pass@32, which counts success if at least one attempt succeeds. The reported tool-use mean is an unweighted average across five benchmarks. The improvements of 1.52 and 2.25 percentage points over GRPO and PPO concern the combined training recipe. Controlled ablations would be needed to separate contributions from normalization, reward centering, KL regularization, and loss reduction.

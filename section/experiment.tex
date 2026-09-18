@@ -3,12 +3,12 @@
 We evaluate our two algorithms, \ours and \varn, in their respective target domains using the OpenRLHF framework \citep{hu2024openrlhf}.
 
 
-\begin{figure*}[!htbp]
+\begin{figure}[!h]
     \centering
-    \includegraphics[width=0.9\linewidth]{imgs/orm_reward_kl.pdf}
-    \caption{Comparison of smoothed Training Reward and KL Divergence. \ours ($k=1$) achieves strong rewards with significantly more stable (lower) KL divergence, avoiding GRPO's reward-hacking behavior.}
+    \includegraphics[width=0.77\linewidth]{imgs/orm_reward_kl.pdf}
+    \caption{Comparison of smoothed Training Reward and KL Divergence. \ours ($k=1$) achieves strong rewards with significantly more stable (lower) KL divergence, illustrating a different reward--KL trade-off.}
     \label{fig:orm_reward_kl}
-\end{figure*}
+\end{figure}
 
 
 \subsection{General RLHF}
@@ -17,10 +17,10 @@ First, we evaluate the \ours in its $k=1$ configuration, focusing on general-dom
 \paragraph{Experimental Setup}
 We use an instruction-following policy model (Llama-3-8B-SFT) and refine it using a Bradley-Terry reward model \citep{bai2022training} trained on $\sim$700K human preference pairs. The policy is trained on 20,000 diverse prompts. We compare \ours ($k=1$) with other critic-free methods: GRPO ($k=4$), RLOO ($k=4$), and ReMax ($k=1$ + 1).
 
-\begin{table}[!htbp]
+\begin{table}[!t]
     \small
     \centering
-\caption{Comparison on Chat-Arena-Hard \citep{li2024crowdsourced}. The single-sample \ours ($k=1$) achieves a top-tier score while being more token-efficient than the group-sampling GRPO.}
+\caption{Comparison on Chat-Arena-Hard \citep{li2024crowdsourced}. The single-sample \ours ($k=1$) achieves a top-tier score with a higher score/length ratio than group-sampling GRPO.}
     \label{tab:general_exp}
     \begin{tabular}{l|cc|c}
     \toprule
@@ -36,10 +36,10 @@ We use an instruction-following policy model (Llama-3-8B-SFT) and refine it usin
 \end{table}
 
 \paragraph{Experimental Results}
-As shown in \Cref{tab:general_exp}, the single-sample \textbf{\ours ($k=1$)} achieves a score of 46.7, statistically tied with the group-sampling GRPO (46.8). However, it produces shorter responses (832 tokens vs. 860), yielding a higher, more efficient per-token score (0.0561). This result indicates that for general tasks, group sampling ($k>1$) is unnecessary and may be suboptimal.
+As shown in \Cref{tab:general_exp}, the single-sample \textbf{\ours ($k=1$)} achieves a score of 46.7, close to the group-sampling GRPO (46.8). However, it produces shorter responses (832 tokens vs. 860), yielding a higher score/length ratio (0.0561). This result supports competitive alignment with single-response sampling; score/length is not a direct measure of training compute efficiency.
 
 \paragraph{Results Analysis}
-\Cref{fig:orm_reward_kl} shows the training dynamics. GRPO's reward rises quickly, but its KL divergence also increases rapidly, suggesting it is "hacking" the reward model. In contrast, \ours shows a more stable reward increase with a much smaller KL divergence. It highlights the stability of global normalization and its higher "KL-to-reward" conversion efficiency, avoiding the reward hacking seen in local normalization methods, which is often linked to length exploitation \citep{dubois2024length}.
+\Cref{fig:orm_reward_kl} shows the training dynamics. GRPO's reward and KL divergence rise rapidly, while \ours exhibits a more gradual reward increase and smaller divergence. These curves describe different reward--KL trade-offs; they do not alone establish reward hacking. Response length can also influence preference-based evaluation~\citep{dubois2024length}. We therefore report both evaluation scores and generated lengths rather than equating higher training reward with better generalization.
 
 % --- MODIFIED: This commented-out table was in the original file and removed by the user. Retaining its removal. ---
 % \begin{table*}[!htbp]
@@ -71,12 +71,12 @@ Next, we evaluate \ours (group-sample, $k>1$) in its target domain: complex reas
 We use rule-based rewards (RLVR) in mathematical reasoning settings \citep{guo2025deepseek,seed2025seed1}.
 
 \paragraph{Analysis on Small-Scale Datasets}
-To test for overfitting, we trained on only 30 questions from AIME-24 and evaluated on AIME-25. As shown in \Cref{tab:small_exp}, GRPO (local norm) achieves a near-perfect 95.0\% on the training set but completely fails on the test set (0.0 Pass@1), demonstrating catastrophic overfitting. In contrast, \ours with global norm, while scoring lower on the training set (71.0), shows significantly better generalization (2.5 Pass@1, 40.0 Pass@16). % <-- MODIFIED: User changed this from Baseline.
+To test for overfitting, we trained on only 30 questions from AIME-24 and evaluated on AIME-25. As shown in \Cref{tab:small_exp}, GRPO (local norm) achieves a near-perfect 95.0\% on the training set but scores only 0.0 Pass@1 and 0.4 Pass@16 on the test set, indicating severe overfitting. In contrast, \ours with global norm, while scoring lower on the training set (71.0), shows higher held-out scores (2.5 Pass@1, 40.0 Pass@16). % <-- MODIFIED: User changed this from Baseline.
 
-\begin{table}[!ht]
+\begin{table}[!t]
     \small
     \centering
-\caption{Comparison on a small training dataset. GRPO (local norm) overfits completely, while \ours (global norm) generalizes.}
+\caption{Comparison on a small training dataset. GRPO (local norm) shows a large train--test gap, while \ours (global norm) generalizes.}
     \label{tab:small_exp}
     \begin{tabular}{l|ccc}
     \toprule
@@ -90,32 +90,31 @@ To test for overfitting, we trained on only 30 questions from AIME-24 and evalua
 
 \end{table}
 
+The curves show the same overfitting pattern: GRPO fits the training questions quickly, while \ours learns more gradually. % <-- MODIFIED: User changed this from Baseline.
 
-\Cref{fig:details} confirms this. GRPO (left) immediately overfits, mastering the training questions in just a few steps. \ours (right) learns more gradually, enabled by the stable global normalization signal. % <-- MODIFIED: User changed this from Baseline.
 
-\begin{figure*}[!htbp]
-    \centering
-    \begin{subfigure}[b]{0.5\linewidth}
-        \centering
-        \includegraphics[width=\textwidth]{imgs/GRPO.png}
-        % \caption{Lorem ipsum}
-    \end{subfigure}%
-    \hfill
-    \begin{subfigure}[b]{0.5\linewidth}
-        \centering
-        \includegraphics[width=\textwidth]{imgs/REINFORCE++.png}
-    \end{subfigure}
-    % --- MODIFIED: User changed this from Baseline. ---
-    \caption{Training curves on a small prompt dataset. Left: GRPO (local norm) immediately overfits. Right: \ours (global norm) learns more stably.}
-    \label{fig:details}
-\end{figure*}
+
+
+
+\begin{center}
+\begin{minipage}{0.42\linewidth}
+\centering
+\includegraphics[width=\linewidth]{imgs/GRPO.png}
+\end{minipage}\hfill
+\begin{minipage}{0.42\linewidth}
+\centering
+\includegraphics[width=\linewidth]{imgs/REINFORCE++.png}
+\end{minipage}
+\captionof{figure}{Training curves on a small prompt dataset. Left: GRPO (local norm) immediately overfits. Right: \ours (global norm) learns more stably.}
+\label{fig:details}
+\end{center}
 
 \paragraph{Logical Reasoning (K\&K Puzzles)}
 We also tested on the Knights and Knaves (K\&K) puzzles \citep{xie2025logic, xie2024memorization}, where difficulty increases with the number of "people." \Cref{fig:logic_score} shows that while GRPO is competitive on easy tasks (2-3 people), its performance collapses on harder, OOD tasks (8 people). \ours is more robust, outperforming GRPO on all tasks with four or more people and achieving a much higher average score (62.1 vs. 55.7). % <-- MODIFIED: User changed this from Baseline.
 
-\begin{figure}[!htbp]
+\begin{figure}[!t]
     \centering
-    \includegraphics[width=0.7\linewidth]{imgs/logic_score.pdf}
+    \includegraphics[width=0.53\linewidth]{imgs/logic_score.pdf}
     % --- MODIFIED: User changed this from Baseline. ---
     \caption{Comparison on logic benchmarks. \ours's global normalization provides better robustness to increasing task difficulty and OOD challenges (8 people).}
     \label{fig:logic_score}
@@ -125,7 +124,7 @@ We also tested on the Knights and Knaves (K\&K) puzzles \citep{xie2025logic, xie
 \paragraph{RL from Zero Setting}
 Finally, we trained a Qwen2.5-Math-Base model from zero on MATH dataset splits \citep{guo2025deepseek}. \Cref{Tab:zero-experiment} shows that \ours again achieves better OOD generalization on the more challenging AIME-24 and AMC-23 datasets, while remaining competitive on the in-distribution MATH-500 test set. % <-- MODIFIED: User changed this from Baseline.
 
-\begin{table*}[!htbp]
+\begin{table*}[!t]
     \small
     \centering
 \caption{Comparison on RL from Zero. \ours shows superior OOD performance.}
@@ -145,16 +144,16 @@ Finally, we trained a Qwen2.5-Math-Base model from zero on MATH dataset splits \
 
 % --- MODIFIED: This section was moved from the appendix by the user. It is a good change. ---
 \subsection{Multi-step Reinforcement Learning}
-Finally, to test performance in a complex, multi-step environment, we use the zero-shot agent setup from \cite{mai2025agent}, in which a Qwen 2.5 Base 7B model must learn to use Python tools to solve mathematical problems. It is a challenging scenario where group sampling ($k > 1$) and reward reshaping are crucial (see Appendix \Cref{appendix:best}).
+Finally, to test performance in a complex, multi-step environment, we use the zero-shot agent setup from \cite{mai2025agent}, in which a Qwen 2.5 Base 7B model must learn to use Python tools to solve mathematical problems. It is a challenging scenario where group sampling ($k > 1$) and reward reshaping are crucial (see \Cref{appendix:best}).
 
 \paragraph{Experimental Setup}
-We adhere to the training and evaluation protocols of the ZeroTIR environment \cite{mai2025agent}. The backbone model is Qwen 2.5 Base 7B, trained using OpenRLHF \cite{hu2025open} with datasets from ORZ \cite{hu2024openrlhf} and DAPO \cite{yu2025dapo}. We assess performance on benchmarks including AIME 2024 \cite{aime2024card}, AIME-2025 \cite{aime2025card}, HMMT FEB-2024/2025, and CMIMC, using the \texttt{average@32} metric.
+We adhere to the training and evaluation protocols of the ZeroTIR environment \cite{mai2025agent}. The backbone model is Qwen 2.5 Base 7B, trained using OpenRLHF \cite{hu2024openrlhf} with datasets from ORZ \cite{hu2025open} and DAPO \cite{yu2025dapo}. We assess performance on benchmarks including AIME 2024 \cite{aime2024card}, AIME-2025 \cite{aime2025card}, HMMT FEB-2024/2025, and CMIMC, using the \texttt{average@32} metric.
 
 \paragraph{Experimental Result}
-As shown in \Cref{tab:performance_comparison_main}, \varn achieves the highest average accuracy (24.10) across all benchmarks. It significantly outperforms both GRPO (22.58) and the full-critic PPO (21.85). It demonstrates that our stable, critic-free approach is highly effective for complex agentic tasks, surpassing even the heavyweight PPO algorithm. The combination of group-mean reshaping, stable global normalization, and the correct `k2` KL loss proves superior.
+As shown in \Cref{tab:performance_comparison_main}, \varn achieves the highest average accuracy (24.10) across all benchmarks. It outperforms both GRPO (22.58) and the full-critic PPO (21.85). It demonstrates that our stable, critic-free approach is highly effective for complex agentic tasks, surpassing even the heavyweight PPO algorithm. The combined recipe leads on four of five tasks; this comparison does not isolate the individual effects of reward centering, normalization, and KL regularization.
 
-\begin{table*}[!htbp]
-\small
+\begin{table*}[!t]
+    \small
 \centering
 \caption{Performance Comparison on complex tool-use benchmarks (average@32). \varn outperforms both GRPO (local norm) and PPO (critic-based) models.}
 \label{tab:performance_comparison_main}
