@@ -2,9 +2,9 @@
 
 \subsection{General Principle}
 
-This paper introduces two algorithms: \ours and \varn[n], with a key focus on selecting the appropriate algorithm based on task conditions.
+This paper introduces two algorithms: \ours and \varn, with a key focus on selecting the appropriate algorithm based on task conditions.
 
-Empirical evidence from the open-source community suggests that \varn[n] is particularly effective for sample filtering or more complex scenarios. For instance, in the multi-turn tool-calling setting, a high proportion of void (i.e., non-informative or incorrect) samples can destabilize training. In such cases, incorporating a baseline by subtracting the intra-group mean reward significantly improves training stability by effectively filtering out void samples. Moreover, this automatic reward reshaping reduces the need for designing complex reward structures. For example, \varn[n] supports both 0/1 and -1/1 reward schemes, while \ours performs best with symmetric rewards, such as -1/1 in RLVR tasks.
+Empirical evidence from the open-source community suggests that \varn is particularly effective for sample filtering or more complex scenarios. For instance, in the multi-turn tool-calling setting, a high proportion of void (i.e., non-informative or incorrect) samples can destabilize training. In such cases, incorporating a baseline by subtracting the intra-group mean reward significantly improves training stability by effectively filtering out void samples. Moreover, this automatic reward reshaping reduces the need for designing complex reward structures. For example, \varn supports both 0/1 and -1/1 reward schemes, while \ours performs best with symmetric rewards, such as -1/1 in RLVR tasks.
 
 In contrast, for general-domain tasks where prompt diversity and efficiency are paramount, or for tasks where obtaining multiple reward signals for distinct responses is challenging—such as training with Process-Supervised Reward Models~(PRMs) or online real-time sampling—we recommend using \textbf{\ours ($k=1$)}. Our experiments (Section 4.1) show that it provides superior OOD generalization in these settings.
 

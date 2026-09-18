@@ -1,6 +1,11 @@
-%%%%%%%% ICML 2026 EXAMPLE LATEX SUBMISSION FILE %%%%%%%%%%%%%%%%%
+%%%%%%%% ICLR 2027 LATEX SUBMISSION FILE %%%%%%%%%%%%%%%%%
+% Official template: https://media.iclr.cc/Conferences/ICLR2027/iclr-2027-style-files.zip
+% Template archive SHA256: 0d940dfa9398ae99a18f24a85a8a683f367204b6af6d17d2899e60a67102529e
 
 \documentclass{article}
+% Compile with pdfLaTeX to preserve the official ICLR Times Type 1 fonts.
+% XeLaTeX/LuaLaTeX use a different font encoding and can trigger font fallback.
+\usepackage{iclr2027_conference,times}
 
 % Recommended, but optional, packages for figures and better typesetting:
 \usepackage{microtype}
@@ -9,19 +14,10 @@
 \usepackage{booktabs} % for professional tables
 
 % hyperref makes hyperlinks in the resulting PDF.
-% If your build breaks (sometimes temporarily if a hyperlink spans a page)
-% please comment out the following usepackage line and replace
-% \usepackage{icml2026} with \usepackage[nohyperref]{icml2026} above.
 \usepackage{hyperref}
 
-% Use the following line for the initial blind version submitted for review:
-\usepackage{icml2026}
-
-% For preprint, use
-% \usepackage[preprint]{icml2026}
-
-% If accepted, instead use the following line for the camera-ready submission:
-% \usepackage[accepted]{icml2026}
+% Keep the submission anonymous; uncomment only for a camera-ready version.
+% \iclrfinalcopy
 
 \usepackage{amsmath}
 \usepackage{amssymb}
@@ -66,7 +62,6 @@
 \usepackage{hyperref}       % For \href
 \usepackage{cleveref}
 \usepackage{adjustbox}
-
 \Crefname{equation}{Eq.}{Eqs.}
 
 \newcommand{\ours}{REINFORCE++\,}
@@ -77,72 +72,34 @@
 
 \tracingpages=1
 
-% The \icmltitle you define below is probably too long as a header.
-% Therefore, a short form for the running title is supplied here:
-\icmltitlerunning{REINFORCE++: Stabilizing Critic-Free Policy Optimization with Global Normalization}
+\title{REINFORCE++: Stabilizing Critic-Free Policy Optimization with Global Normalization}
+
+% Original author and affiliation metadata, hidden by the ICLR review style.
+\author{%
+  Firstname1 Lastname1\textsuperscript{*,1},
+  Firstname2 Lastname2\textsuperscript{*,1,2},
+  Firstname3 Lastname3\textsuperscript{2} \\
+  Firstname4 Lastname4\textsuperscript{3},
+  Firstname5 Lastname5\textsuperscript{1},
+  Firstname6 Lastname6\textsuperscript{3,1,2} \\
+  Firstname7 Lastname7\textsuperscript{2},
+  Firstname8 Lastname8\textsuperscript{3},
+  Firstname8 Lastname8\textsuperscript{1,2} \\
+  \textsuperscript{1}Department of XXX, University of YYY, Location, Country \\
+  \textsuperscript{2}Company Name, Location, Country \\
+  \textsuperscript{3}School of ZZZ, Institute of WWW, Location, Country \\
+  Correspondence to: Firstname1 Lastname1 \texttt{first1.last1@xxx.edu}, \\
+  Firstname2 Lastname2 \texttt{first2.last2@www.uk}
+}
+\hypersetup{
+  pdftitle={REINFORCE++: Stabilizing Critic-Free Policy Optimization with Global Normalization},
+  pdfauthor={Anonymous Authors},
+  pdfkeywords={Machine Learning, ICML}
+}
 
 \begin{document}
 
-\twocolumn[
-  \icmltitle{REINFORCE++: Stabilizing Critic-Free\\Policy Optimization with Global Normalization}
-
-  % It is OKAY to include author information, even for blind submissions: the
-  % style file will automatically remove it for you unless you've provided
-  % the [accepted] option to the icml2026 package.
-
-  % List of affiliations: The first argument should be a (short) identifier you
-  % will use later to specify author affiliations Academic affiliations
-  % should list Department, University, City, Region, Country Industry
-  % affiliations should list Company, City, Region, Country
-
-  % You can specify symbols, otherwise they are numbered in order. Ideally, you
-  % should not use this facility. Affiliations will be numbered in order of
-  % appearance and this is the preferred way.
-  \icmlsetsymbol{equal}{*}
-
-  \begin{icmlauthorlist}
-    \icmlauthor{Firstname1 Lastname1}{equal,yyy}
-    \icmlauthor{Firstname2 Lastname2}{equal,yyy,comp}
-    \icmlauthor{Firstname3 Lastname3}{comp}
-    \icmlauthor{Firstname4 Lastname4}{sch}
-    \icmlauthor{Firstname5 Lastname5}{yyy}
-    \icmlauthor{Firstname6 Lastname6}{sch,yyy,comp}
-    \icmlauthor{Firstname7 Lastname7}{comp}
-    %\icmlauthor{}{sch}
-    \icmlauthor{Firstname8 Lastname8}{sch}
-    \icmlauthor{Firstname8 Lastname8}{yyy,comp}
-    %\icmlauthor{}{sch}
-    %\icmlauthor{}{sch}
-  \end{icmlauthorlist}
-
-  \icmlaffiliation{yyy}{Department of XXX, University of YYY, Location, Country}
-  \icmlaffiliation{comp}{Company Name, Location, Country}
-  \icmlaffiliation{sch}{School of ZZZ, Institute of WWW, Location, Country}
-
-  \icmlcorrespondingauthor{Firstname1 Lastname1}{first1.last1@xxx.edu}
-  \icmlcorrespondingauthor{Firstname2 Lastname2}{first2.last2@www.uk}
-
-  % You may provide any keywords that you find helpful for describing your
-  % paper; these are used to populate the "keywords" metadata in the PDF but
-  % will not be shown in the document
-  \icmlkeywords{Machine Learning, ICML}
-
-  \vskip 0.3in
-]
-
-% this must go after the closing bracket ] following \twocolumn[ ...
-
-% This command actually creates the footnote in the first column listing the
-% affiliations and the copyright notice. The command takes one argument, which
-% is text to display at the start of the footnote. The \icmlEqualContribution
-% command is standard text for equal contribution. Remove it (just {}) if you
-% do not need this facility.
-
-% Use ONE of the following lines. DO NOT remove the command.
-% If you have no special notice, KEEP empty braces:
-\printAffiliationsAndNotice{}  % no special notice (required even if empty)
-% Or, if applicable, use the standard equal contribution text:
-% \printAffiliationsAndNotice{\icmlEqualContribution}
+\maketitle
 
 \begin{abstract}
   Reinforcement Learning from Human Feedback (RLHF) plays a crucial role in aligning Large Language Models (LLMs).
@@ -167,16 +124,21 @@
 
 \input{section/conclusion}
 
-\newpage
+% Let the ICLR style's flushbottom setting fill the last main-text page.
+\pagebreak
 
-\section*{Impact Statement}
+\section*{AI Use Statement}
+
+Generative AI tools were used to assist with the LaTeX template migration, formatting checks, and compilation diagnostics. They were not used to generate experimental data, fabricate results, or make scientific claims. The authors reviewed all AI-assisted work and take responsibility for the final content of this paper, including its text, claims, and artifacts.
+
+\section*{Ethics Statement}
 
 Reinforcement learning is increasingly used to steer large language models by optimizing them against a reward signal, including verifiable, programmatic rewards (RLVR) for domains such as math, code, and tool use. The main potential positive impact of this line of work is improved scalability and reproducibility of post-training: verifiable rewards can reduce reliance on human labeling and make optimization targets easier to audit and replicate. By improving the stability and efficiency of critic-free optimization under sparse and brittle rewards, our method can help make RLVR-style training more reliable.
 
 Potential risks include reward gaming when verifiers are incomplete or mis-specified, and dual-use concerns if improved tool-use or problem-solving capabilities are deployed without safeguards. We recommend evaluating beyond verifier scores (e.g., robustness and red-teaming), stress-testing verifiers for exploitability, and using conservative deployment controls (e.g., access restrictions and monitoring) for systems trained with RL.
 
 \bibliography{reference}
-\bibliographystyle{icml2026}
+\bibliographystyle{iclr2027_conference}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -185,7 +147,6 @@ Potential risks include reward gaming when verifiers are incomplete or mis-speci
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \newpage
 \appendix
-\onecolumn
 
 \input{section/appendix}
 

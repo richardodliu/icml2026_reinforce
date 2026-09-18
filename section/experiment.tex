@@ -20,6 +20,8 @@ We use an instruction-following policy model (Llama-3-8B-SFT) and refine it usin
 \begin{table}[!htbp]
     \small
     \centering
+\caption{Comparison on Chat-Arena-Hard \citep{li2024crowdsourced}. The single-sample \ours ($k=1$) achieves a top-tier score while being more token-efficient than the group-sampling GRPO.}
+    \label{tab:general_exp}
     \begin{tabular}{l|cc|c}
     \toprule
                        & Score & Length  & Per Token    \\
@@ -30,8 +32,7 @@ We use an instruction-following policy model (Llama-3-8B-SFT) and refine it usin
     ReMax (k=1+1)      & 45.1        & \textbf{805}  &  0.0560 \\
     \bottomrule
     \end{tabular}
-    \caption{Comparison on Chat-Arena-Hard \citep{li2024crowdsourced}. The single-sample \ours ($k=1$) achieves a top-tier score while being more token-efficient than the group-sampling GRPO.}
-    \label{tab:general_exp}
+
 \end{table}
 
 \paragraph{Experimental Results}
@@ -75,6 +76,8 @@ To test for overfitting, we trained on only 30 questions from AIME-24 and evalua
 \begin{table}[!ht]
     \small
     \centering
+\caption{Comparison on a small training dataset. GRPO (local norm) overfits completely, while \ours (global norm) generalizes.}
+    \label{tab:small_exp}
     \begin{tabular}{l|ccc}
     \toprule
                        & AIME-24 (Train) & \multicolumn{2}{c}{AIME-25 (Test)} \\
@@ -84,8 +87,7 @@ To test for overfitting, we trained on only 30 questions from AIME-24 and evalua
     \textbf{\ours} & 71.0        & \textbf{2.5}& \textbf{40.0} \\ % <-- MODIFIED: User changed this from Baseline, I'm adding ($k>1$) for clarity
     \bottomrule
     \end{tabular}
-    \caption{Comparison on a small training dataset. GRPO (local norm) overfits completely, while \ours (global norm) generalizes.}
-    \label{tab:small_exp}
+
 \end{table}
 
 
@@ -126,6 +128,8 @@ Finally, we trained a Qwen2.5-Math-Base model from zero on MATH dataset splits \
 \begin{table*}[!htbp]
     \small
     \centering
+\caption{Comparison on RL from Zero. \ours shows superior OOD performance.}
+    \label{Tab:zero-experiment}
     \begin{tabular}{l|ccc}
     \toprule
                        & AIME-24 (OOD) & AMC-23 (OOD) & MATH-500 (ID) \\
@@ -136,8 +140,7 @@ Finally, we trained a Qwen2.5-Math-Base model from zero on MATH dataset splits \
     \bottomrule
     \end{tabular}
     % --- MODIFIED: User changed this from Baseline. ---
-    \caption{Comparison on RL from Zero. \ours shows superior OOD performance.}
-    \label{Tab:zero-experiment}
+
 \end{table*}
 
 % --- MODIFIED: This section was moved from the appendix by the user. It is a good change. ---
@@ -153,15 +156,17 @@ As shown in \Cref{tab:performance_comparison_main}, \varn achieves the highest a
 \begin{table*}[!htbp]
 \small
 \centering
+\caption{Performance Comparison on complex tool-use benchmarks (average@32). \varn outperforms both GRPO (local norm) and PPO (critic-based) models.}
+\label{tab:performance_comparison_main}
+\setlength{\tabcolsep}{2.5pt} % Fit the unchanged table within the ICLR text width.
 \begin{tabular}{l|ccccc|c}
 \toprule
-\textbf{Algorithm} & AIME 24 & AIME 25 & HMMT 2025 & HMMT 2024 & CMIMC & \textbf{Avg} \\
+\textbf{Algorithm} & AIME 24 & AIME 25 & \shortstack{HMMT\\2025} & \shortstack{HMMT\\2024} & CMIMC & \textbf{Avg} \\
 \midrule
 GRPO (local norm) & \textbf{31.66} & 21.87 & 16.97 & 17.70 & 24.68 & 22.58 \\
 PPO (critic-based) & 30.20 & 21.66 & 15.00 & 18.43 & 23.95 & 21.85 \\
-\textbf{RF++-Baseline (global norm)} & 30.83 & \textbf{27.18} & \textbf{17.91} & \textbf{18.95} & \textbf{25.62} & \textbf{24.10} \\
+\shortstack[l]{\textbf{RF++-Baseline}\\\textbf{(global norm)}} & 30.83 & \textbf{27.18} & \textbf{17.91} & \textbf{18.95} & \textbf{25.62} & \textbf{24.10} \\
 \bottomrule
 \end{tabular}
-\caption{Performance Comparison on complex tool-use benchmarks (average@32). \varn outperforms both GRPO (local norm) and PPO (critic-based) models.}
-\label{tab:performance_comparison_main}
+
 \end{table*}

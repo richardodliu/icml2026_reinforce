@@ -131,16 +131,16 @@ Given the importance ratio $\delta(y) = \pi_{ref}(y|\cdot) / \pi_{\theta}(y|\cdo
 We analyze which of these (k1, $k_2$, or $k_3$) is the correct choice when used as a separate loss term.
 
 \paragraph{Theoretical Reverse KL Gradient}
-We are training with samples from $\pi_{\theta}$, so we are approximating the **Reverse KL (RKL)**, $D_{KL}(\pi_{\theta}||\pi_{ref})$. The practical policy gradient for RKL is (more details are in \citep{liu2025rethinking}):
+We are training with samples from $\pi_{\theta}$, so we are approximating the \textbf{Reverse KL (RKL)}, $D_{KL}(\pi_{\theta}||\pi_{ref})$. The practical policy gradient for RKL is (more details are in \citep{liu2025rethinking}):
 $$
 \nabla_{\theta}\mathcal{J}_{RKL}(\theta) = \mathbb{E}_{y\sim\pi_{\theta}(\cdot|x)}\left[\left(\log\frac{\pi_{\theta}(y|x)}{\pi_{ref}(y|x)}\right)\nabla_{\theta}\log \pi_{\theta}(y|x)\right]
 $$
 
 \paragraph{k1 Analysis}
-We can **exclude k1** as a loss term. Its gradient does not depend on $\pi_{ref}$ and thus provides no constraining effect. The loss $\mathcal{J}_{k{1}} = \mathbb{E}_{y\sim\pi_{\theta}}[\log \pi_{\theta} - \log \pi_{ref}]$ differentiates to $\nabla_{\theta}\mathcal{J}_{k{1}} = \mathbb{E}_{y\sim\pi_{\theta}}[\nabla_{\theta}\log \pi_{\theta}]$, as the $\pi_{ref}$ term vanishes. (Note: k1 *is* used inside the reward for REINFORCE++, but not as a separate loss term).
+We can \textbf{exclude k1} as a loss term. Its gradient does not depend on $\pi_{ref}$ and thus provides no constraining effect. The loss $\mathcal{J}_{k{1}} = \mathbb{E}_{y\sim\pi_{\theta}}[\log \pi_{\theta} - \log \pi_{ref}]$ differentiates to $\nabla_{\theta}\mathcal{J}_{k{1}} = \mathbb{E}_{y\sim\pi_{\theta}}[\nabla_{\theta}\log \pi_{\theta}]$, as the $\pi_{ref}$ term vanishes. (Note: k1 \emph{is} used inside the reward for REINFORCE++, but not as a separate loss term).
 
 \paragraph{$k_2$ Analysis}
-The $k_2$ estimator provides a gradient that is **equivalent to the theoretical Reverse KL gradient**.
+The $k_2$ estimator provides a gradient that is \textbf{equivalent to the theoretical Reverse KL gradient}.
 
 The $k_2$ loss is (noting that $(\log \frac{\pi_{\theta}}{\pi_{ref}})^2 = (\log \frac{\pi_{ref}}{\pi_{\theta}})^2$):
 $$
@@ -159,7 +159,7 @@ $$
 This \emph{perfectly matches} the practical RKL gradient. Therefore, $k_2$ is the theoretically correct and stable choice.
 
 \paragraph{$k_3$ Analysis}
-The $k_3$ gradient is problematic. It is theoretically an estimator for the **Forward KL** ($KL(\pi_{ref}||\pi_{\theta})$), not the Reverse KL. There is a mismatch: we are sampling from $\pi_{\theta}$, but the Forward KL gradient requires sampling from $\pi_{ref}$.
+The $k_3$ gradient is problematic. It is theoretically an estimator for the \textbf{Forward KL} ($KL(\pi_{ref}||\pi_{\theta})$), not the Reverse KL. There is a mismatch: we are sampling from $\pi_{\theta}$, but the Forward KL gradient requires sampling from $\pi_{ref}$.
 
 This method, used in GRPO, suffers from two major issues:
 \begin{itemize}
