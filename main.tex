@@ -1,0 +1,50 @@
+\documentclass{article}
+\usepackage{iclr2027_conference,times}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{microtype}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{graphicx,booktabs,tabularx}
+\usepackage{algorithm,algpseudocode}
+\usepackage{subcaption}
+\usepackage{placeins}
+\usepackage{xurl}
+\usepackage{hyperref}
+\usepackage[capitalize,noabbrev]{cleveref}
+\usepackage{xspace}
+
+\newcommand{\ours}{REINFORCE++\xspace}
+\newcommand{\baseline}{REINFORCE++-Baseline\xspace}
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\KL}{D_{\mathrm{KL}}}
+\newcommand{\sg}{\operatorname{sg}}
+\newtheorem{proposition}{Proposition}
+\newtheorem{remark}{Remark}
+\hypersetup{pdftitle={REINFORCE++: Stabilizing Critic-Free Policy Optimization with Global Normalization},pdfauthor={},pdfsubject={Anonymous ICLR 2027 submission},pdfkeywords={reinforcement learning, RLHF, policy optimization, advantage normalization}}
+
+\title{REINFORCE++: Stabilizing Critic-Free Policy\\Optimization with Global Normalization}
+\author{Anonymous authors}
+% Keep \iclrfinalcopy disabled for double-blind submission.
+
+\begin{document}
+\maketitle
+\begin{abstract}
+Critic-free reinforcement learning reduces the cost of post-training large language models, but its behavior depends strongly on how rewards are converted into advantages. In group-relative methods, normalizing rewards separately for each prompt couples the update scale to statistics estimated from a small set of responses. We introduce REINFORCE++, a critic-free policy optimization framework that instead normalizes advantages across the rollout batch. The basic variant supports one or more responses per prompt and incorporates a token-level KL penalty into Monte Carlo returns. A second variant, REINFORCE++-Baseline, combines a within-prompt reward baseline with global normalization and a separate KL regularizer. Our analysis characterizes finite-sample normalization and its convergence to population standardization under independent sampling. Experiments cover preference-based alignment, mathematical and logical reasoning, and multi-step tool use. With one response per prompt, REINFORCE++ obtains an Arena-Hard score of 46.7, compared with 46.8 for four-response GRPO. In tool-use experiments, REINFORCE++-Baseline achieves an average score of 24.10, compared with 22.58 for GRPO and 21.85 for PPO. These results support global normalization as a practical design choice for critic-free language-model training.
+\end{abstract}
+
+\input{sections/introduction}
+\input{sections/background}
+\input{sections/method}
+\input{sections/experiments}
+\FloatBarrier
+\input{sections/discussion}
+\input{sections/conclusion}
+
+\clearpage
+\input{sections/statements}
+\bibliographystyle{iclr2027_conference}
+\bibliography{references}
+\clearpage
+\appendix
+\input{sections/appendix}
+\end{document}

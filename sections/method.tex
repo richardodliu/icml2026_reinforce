@@ -1,0 +1,81 @@
+\section{REINFORCE++}\label{sec:method}
+We use a rollout batch $\mathcal B$ containing $B$ sampled responses. With $k$ responses per prompt, the batch contains $B/k$ prompt groups when $B$ is divisible by $k$. We reserve $E$ for the number of optimization epochs, $\varepsilon$ for PPO clipping, and $\eta$ for numerical stabilization.
+
+\subsection{Monte Carlo returns with global normalization}
+The basic variant uses the terminal task reward and a token-level log-ratio penalty. For response $i$, define
+\begin{align}
+ d_{i,t}&=\log\frac{\pi_{\mathrm{old}}(o_{i,t}\mid h_{i,t})}
+ {\pi_{\mathrm{ref}}(o_{i,t}\mid h_{i,t})},\\
+ G_{i,t}&=r(q_i,o_i)-\beta\sum_{u=t}^{T_i}d_{i,u}.
+ \label{eq:return}
+\end{align}
+Here $\pi_{\mathrm{ref}}$ is a fixed reference policy and $\beta\geq0$. With undiscounted returns, the terminal task reward contributes to every preceding response token. It is the immediate task reward, rather than the return, that is zero before termination.
+
+We center and scale the returns using statistics from the full rollout batch:
+\begin{equation}
+ \widehat A_{i,t}=\frac{G_{i,t}-\mu_{\mathcal B}}{\sigma_{\mathcal B}+\eta}.
+ \label{eq:global}
+\end{equation}
+The moments are computed over valid response positions, excluding padding. They are shared across prompt groups and held fixed during subsequent minibatch updates. This global normalization is distinct from the reduction of token losses, which averages within each response before averaging across responses (\cref{appendix:batch_mean}).
+
+Pooling observations across prompts makes the normalization depend on the full batch rather than any one small group. It also gives every prompt a common scale during optimization. \Cref{appendix:normalization} characterizes finite-sample normalization and establishes its convergence under independent sampling.
+
+The basic variant maximizes \cref{eq:ppo} with $A_t=\widehat A_t$. It requires neither a critic nor multiple responses to a prompt. The same construction also applies when $k>1$.
+
+\begin{algorithm}[t]
+\caption{REINFORCE++ with $k\geq1$ responses per prompt}
+\label{algo:main}
+\begin{algorithmic}[1]
+\Require Policy $\pi_\theta$, reference $\pi_{\mathrm{ref}}$, reward function $r$, prompt data
+\Require Rollout size $B$, responses per prompt $k$, optimization epochs $E$
+\For{each rollout step}
+ \State Freeze $\pi_{\mathrm{old}}\gets\pi_\theta$
+ \State Sample $B/k$ prompts and $k$ responses per prompt from $\pi_{\mathrm{old}}$
+ \State Evaluate rewards and compute token returns using \cref{eq:return}
+ \State Compute global moments and normalized advantages using \cref{eq:global}
+ \State Detach advantages and retain old-policy log probabilities
+ \For{$e=1,\ldots,E$}
+  \For{each response minibatch}
+   \State Update $\theta$ with the batch mean loss in \cref{eq:batch_mean}
+  \EndFor
+ \EndFor
+\EndFor
+\State \Return $\pi_\theta$
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{A group-baseline variant}
+\label{sec:baseline}
+For tasks with multiple responses per prompt, \baseline first subtracts a within-prompt mean reward:
+\begin{equation}
+ C_{q,i}=r(q,o^{(i)})-\frac{1}{k}\sum_{j=1}^{k}r(q,o^{(j)}),
+ \qquad k>1.
+ \label{eq:group_center}
+\end{equation}
+We broadcast $C_{q,i}$ to the valid response tokens and apply the global normalization in \cref{eq:global}, using $C$ in place of $G$. The group baseline removes a shared reward offset for each prompt; global scaling then applies a common scale across the batch.
+
+The group mean includes the current response. In fact,
+\begin{equation}
+ C_{q,i}=\frac{k-1}{k}A_i^{\mathrm{RLOO}}.
+ \label{eq:rloo_relation}
+\end{equation}
+This identity makes the relation to RLOO explicit. Group centering focuses the reward contrast on groups whose sampled responses have different outcomes.
+
+This variant uses a separate KL regularizer rather than including the KL penalty in \cref{eq:group_center}. Define
+\begin{equation}
+ z_{i,t}(\theta)=\log\frac{\pi_\theta(o_{i,t}\mid h_{i,t})}{\pi_{\mathrm{ref}}(o_{i,t}\mid h_{i,t})},
+ \qquad k_2(z)=\tfrac12 z^2.
+\end{equation}
+The training loss is
+\begin{equation}
+ L_{\mathrm{Baseline}}(\theta)=L_{\mathrm{PG}}(\theta)
+ +\beta_{\mathrm{KL}}\frac{1}{B}\sum_{i=1}^{B}
+ \frac{1}{T_i}\sum_{t=1}^{T_i}\tfrac12 z_{i,t}(\theta)^2,
+ \label{eq:baseline_loss}
+\end{equation}
+where $L_{\mathrm{PG}}$ is the negative clipped surrogate. For a fixed context and on-policy action samples, the expected gradient obtained by differentiating $k_2$ with sampled actions held fixed matches the reverse-KL gradient~\citep{liu2025rethinking}. This is a statement about a gradient surrogate, not equality of KL values or of full sequence objectives. Reusing old-policy rollouts makes the uncorrected estimator off-policy; \cref{appendix:kl} states the distinction precisely.
+
+\subsection{Relationship to PPO and practical cost}
+Setting the value function to zero and taking $\gamma=\lambda_{\mathrm{GAE}}=1$ reduces GAE to an undiscounted Monte Carlo return. The basic variant uses this return structure, followed by batch normalization. The group-baseline variant adds prompt-specific reward centering and moves KL regularization into a separate loss. Both retain PPO's clipped surrogate while replacing the learned critic with directly computed reward statistics.
+
+Both variants remove critic training and storage. At fixed response budget $B$, the $k=1$ configuration permits up to $B$ distinct prompts, whereas grouped sampling uses $B/k$. This is a sampling-budget comparison: realized runtime and memory also depend on generation lengths, batching, and the implementation.

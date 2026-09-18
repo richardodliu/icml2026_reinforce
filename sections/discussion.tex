@@ -1,0 +1,9 @@
+\section{Design implications}\label{sec:discussion}
+\paragraph{A shared scale with an optional local baseline.}
+The framework separates two roles that are coupled in group-standardized methods. A local baseline measures a response relative to alternatives for the same prompt. Global normalization provides a shared scale for optimization across prompts. The basic variant uses the latter without requiring grouped responses, while \baseline combines both. This separation gives a common formulation for single-response alignment and grouped reasoning or tool-use training.
+
+\paragraph{Allocating the response budget.}
+With $B$ generated responses, $k=1$ permits up to $B$ distinct prompts. Larger $k$ trades some of that prompt coverage for repeated exploration of each prompt. For leave-one-out reward centering, fixed-budget analysis identifies a trade-off between local-baseline quality, baseline-estimation noise, and the number of independent prompt draws~\citep{hu2026groupbatch}. The alignment experiment demonstrates the value of the single-response configuration, while the reasoning and tool-use experiments illustrate grouped sampling. The choice follows the task's reward structure and sampling requirements.
+
+\paragraph{Making the optimization convention explicit.}
+Normalization determines the center and scale of the advantage signal; loss reduction determines how token contributions are combined. Our batch mean loss assigns equal outer weight to each response, with token contributions averaged within that response. Stating both choices makes the method easier to implement and the reported comparisons easier to interpret.
