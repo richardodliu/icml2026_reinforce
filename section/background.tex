@@ -1,11 +1,6 @@
 \section{Background and Related Work}\label{sec:background}
 
-\begin{figure*}[!ht]
-    \centering
-    \includegraphics[width=\textwidth]{imgs/re_2.pdf}
-    \caption{The comparison of PPO, ReMax, GRPO, RLOO, and \ours. \ours, as shown in the figure, removes the critic model and uses global batch normalization. \varn uses group sampling, similar to GRPO/RLOO, but combines group-mean subtraction with global batch normalization.}
-    \label{fig:main}
-\end{figure*}
+
 
 \subsection{PPO and Critic-Free RLHF}
 PPO optimizes LLMs by maximizing the following surrogate objective:
@@ -42,6 +37,13 @@ Critic-free methods in \Cref{fig:main} remove the critic $V(\cdot)$ and compute 
 \begin{equation}\label{eq:grpo}
 A_{q,o_t^{(i)}} = \frac{r(o^{(i)}) - \text{mean}\bigl(\{r(o^{(j)})\}_{j=1}^{k}\bigr)}{\text{std}\bigl(\{r(o^{(j)})\}_{j=1}^{k}\bigr) + \epsilon}
 \end{equation}
+
+\begin{figure}[t]
+    \centering
+    \includegraphics[width=\textwidth]{imgs/re_2.pdf}
+    \caption{Comparison of PPO, ReMax, GRPO, RLOO, and \ours. \ours uses global advantage normalization with reward-based returns and no learned critic. \varn uses group sampling, similar to GRPO/RLOO, but combines group-mean subtraction with global batch normalization.}
+    \label{fig:main}
+\end{figure}
 
 \subsection{Properties of Local Normalization}
 The \textbf{prompt-level (local) normalization} in \Cref{eq:grpo} has three properties relevant to advantage estimation and evaluation:

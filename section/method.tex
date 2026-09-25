@@ -1,28 +1,28 @@
 \section{Method}\label{sec:method}
 
 
-Our method uses normalization statistics pooled across the rollout batch for critic-free RLHF. We propose two variants for different use cases.
+Our method uses normalization statistics pooled across the rollout batch for critic-free RLHF. The variants differ in reward centering and KL regularization.
 
 \subsection{Global Normalization}
 
 The primary \ours algorithm is designed for general-purpose RLHF. In its $k=1$ configuration, it allocates each response in the rollout budget to a distinct prompt.
 
-It optimizes the PPO objective in \Cref{eq:ppo} but redefines the advantage $A_{q,o_t}$. We use the standard PPO reward formulation, which incorporates the k1-style KL penalty directly into the reward:
+It optimizes the PPO objective in \Cref{eq:ppo} but redefines the advantage $A_{q,o_t}$. We combine a terminal task reward with token-level $k_1$ KL penalties to obtain the return:
 \begin{equation}\label{eq:adv}
 A_{q,o_t} = r(o_{1:T},q) - \beta \cdot \sum_{i=t}^{T} \mathrm{KL}(i)
 \end{equation}
 where $\text{KL}(t) = \log\left(\frac{\pi_{\theta_{\text{old}}}(o_t | q, o_{<t})}{\pi_{ref}(o_t | q, o_{<t})}\right)$.
 
-We use Global Advantage Normalization to share statistics across prompts, including the single-response setting where within-prompt reward variation cannot be estimated~\citep{andrychowicz2020matters}:
+We normalize advantages using a shared batch mean and standard deviation, both for single-response and multiple-response sampling~\citep{andrychowicz2020matters}:
 \begin{equation}\label{eq:batch_norm}
 A_{q,o_t}^{\text{norm}} = \frac{A_{q,o_t} - \text{mean}\left(A|A \in \mathcal{D}_{\text{batch}}\right)}{\text{std}\left(A|A \in \mathcal{D}_{\text{batch}}\right) + \epsilon}
 \end{equation}
-The global normalization is the core of \ours. Pooling a large rollout batch (e.g., 1024 responses) replaces separate small-group scales with shared statistics. Appendix~\ref{appendix:proof_GRPO} characterizes convergence of the normalization statistics under independent sampling. Valid token positions exclude padding, and the moments remain fixed during rollout reuse.
-The efficient $k=1$ case is detailed in \Cref{algo:main}.
+Pooling a rollout batch (e.g., 1024 responses) gives all prompts a shared advantage scale. Appendix~\ref{appendix:proof_GRPO} characterizes convergence of the normalization statistics under independent sampling. Valid token positions exclude padding, and the moments remain fixed during rollout reuse.
+The single-response $k=1$ case is detailed in \Cref{algo:main}.
 
 
 \subsection{Local Baseline}
-For more complex tasks, such as multi-step reasoning, sampling multiple responses per prompt ($k > 1$) can be beneficial \citep{yue2025vapo}. To this end, we introduce \varn. This variant uses group sampling for reward comparisons and global normalization for scale estimation. The advantage calculation is a two-step process:
+For multi-step reasoning, we consider multiple responses per prompt ($k > 1$) \citep{yue2025vapo}. The baseline variant, \varn, centers their rewards within each prompt group. This variant uses group sampling for reward comparisons and global normalization for scale estimation. The advantage calculation is a two-step process:
 \begin{itemize}
     \item \textbf{Group Mean Subtraction for Reshaping}: We first subtract the group mean reward. This baseline removes reward offsets shared by responses to the same prompt; the subsequent global normalization sets their common scale.
     \begin{equation}\label{eq:group_center}
@@ -33,9 +33,9 @@ For more complex tasks, such as multi-step reasoning, sampling multiple response
      A_{q,o_t}^{\text{norm}} = \frac{A'_{q,o_t} - \mathrm{mean}_{\text{batch}}(A')}{\text{std}_{\text{batch}}(A') + \epsilon}
     \end{equation}
 \end{itemize}
-This separates reward centering from scale estimation; the inclusive group baseline equals $(k-1)/k$ times RLOO (Appendix~\ref{appendix:design}).
+This separates reward centering from scale estimation; the group-centered reward equals $(k-1)/k$ times the RLOO advantage (Appendix~\ref{appendix:design}).
 
-Furthermore, this variant employs a separate $k_2$ KL regularizer. At a fixed context with on-policy actions held fixed during differentiation, its expected pointwise gradient equals the reverse-KL gradient~\citep{liu2025rethinking}. During old-policy rollout reuse, the same term serves as an off-policy surrogate (Appendix~\ref{appendix:kl_design}). The maximized objective is:
+The baseline variant also uses a separate $k_2$ KL regularizer. At a fixed context with on-policy actions held fixed during differentiation, its expected pointwise gradient equals the reverse-KL gradient~\citep{liu2025rethinking}. During old-policy rollout reuse, the same term serves as an off-policy surrogate (Appendix~\ref{appendix:kl_design}). The maximized objective is:
 \begin{equation}\label{eq:baseline_loss}
 \mathcal{L} = \mathcal{L}_{\text{PPO}}(A^{\text{norm}}) - \lambda\,\mathbb{E}_{o\sim\pi_{\mathrm{old}}}\left[\frac{1}{|o|}\sum_t \frac12\left(\log\frac{\pi_\theta(o_t\mid q,o_{<t})}{\pi_{ref}(o_t\mid q,o_{<t})}\right)^2\right].
 \end{equation}
@@ -48,7 +48,7 @@ Both variants retain PPO clipping without a learned critic. Setting $V=0$ and $\
 The task's immediate reward is zero before termination, but its undiscounted return contributes to every preceding response token in \Cref{eq:adv}. \varn broadcasts its centered terminal reward to valid response positions. The objective averages token losses within each response and then across responses, as specified in Appendix~\ref{appendix:batch_mean}.
 
 \paragraph{Batch Construction}
-For REINFORCE++ ($k=1$), a global batch of size $N$ comprises $N$ distinct prompts. For \varn ($k=4$), a global batch of size $N=1024$ might contain $ 1024/4=256$ unique prompts. The global moments pool valid response positions across the rollout batch.
+For REINFORCE++ ($k=1$), a global batch of size $N$ comprises $N$ distinct prompts. For \varn ($k=4$), a global batch of $N=1024$ responses contains $1024/4=256$ prompts. The global moments pool valid response positions across the rollout batch.
 
 \paragraph{Mini-Batch Updates}
 We partition each rollout batch into mini-batches for policy optimization:
@@ -69,15 +69,15 @@ Reward preprocessing controls the location, range, and scale of reward values:
 
 \subsection{Statistical Motivation} \label{appendix:whyglobal}
 
-Omitting the numerical stabilizer, under independent sampling with nonzero population variance, normalization approaches the population-standardized target as $N\to\infty$ (Appendix~\ref{appendix:proof_GRPO}). This motivates global normalization in both \textsc{REINFORCE++} and \textsc{REINFORCE++}\textsubscript{\textit{w/} Baseline}: a batch of 1024 responses pools more observations than groups of 4 or 8. Token dependence and repeated responses limit the effective independent sample count. The scalar convergence analysis describes scale estimation; clipping and rollout reuse enter separately through the optimization objective.
+Omitting the numerical stabilizer, under independent sampling with nonzero population variance, normalization approaches the population-standardized target as $N\to\infty$ (Appendix~\ref{appendix:proof_GRPO}). This motivates global normalization in both \textsc{REINFORCE++} and \textsc{REINFORCE++}\textsubscript{\textit{w/} Baseline}: a batch of 1024 responses pools more observations than groups of 4 or 8. Within-response token dependence affects the effective sample size of the pooled statistics. The scalar convergence analysis describes scale estimation; clipping and rollout reuse enter separately through the optimization objective.
 
 \subsection{Summary}
 
-The two variants share \textbf{Global Advantage Normalization} and a critic-free clipped objective. Instead of normalizing within a prompt's local group, \ours normalizes the advantage function across the \textit{entire global training batch}. The overall approach is:
+The two variants share \textbf{Global Advantage Normalization} and a critic-free clipped objective. Instead of normalizing within a prompt's local group, \ours normalizes the advantage function across the \textit{entire global training batch}. The method has the following properties:
 \begin{itemize}
     \item \textbf{Shared Statistics}: Sample moments converge under independent sampling. For token-level statistics, within-trajectory dependence determines the effective sample size (Appendix~\ref{appendix:proof_GRPO}).
     \item \textbf{Critic-Free Optimization}: Both variants avoid a learned value network and its associated forward passes, gradient updates, and optimizer state.
-    \item \textbf{Held-Out Evaluation}: Using a shared scale is associated with improved held-out reasoning results in our evaluated settings.
+    \item \textbf{Held-Out Evaluation}: The reasoning experiments report higher AIME and AMC scores than GRPO with local normalization.
 \end{itemize}
 
 \begin{algorithm}

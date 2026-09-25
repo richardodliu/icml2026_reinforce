@@ -1,5 +1,5 @@
 \section{Response-wise loss reduction and implementation}\label{appendix:batch_mean}
-\textbf{The objective in \Cref{eq:ppo} uses a mean over valid tokens within each response, followed by a mean over responses in the batch.} This section specifies the reduction independently of advantage normalization.
+\textbf{The objective in \Cref{eq:ppo} uses a mean over valid tokens within each response, followed by a mean over responses in the batch.} Response averaging assigns equal weight to each sampled response.
 
 Let $m_{i,t}\in\{0,1\}$ indicate a valid response token included in the policy loss, and let $n_i=\sum_t m_{i,t}>0$. For $B$ responses, the policy loss is
 \begin{equation}
@@ -32,7 +32,7 @@ With unit discount, its return is $\sum_{u=t}^{T_i}\widetilde r_{i,u}=A_{q_i,o_{
 
 
 \section{Finite-sample properties of normalization}\label{appendix:normalization}\label{appendix:proof_GRPO}
-We analyze a scalar model to make the effect of estimating normalization statistics from the same samples explicit. Let
+We study rewards standardized by the mean and variance of the same sample. Let
 \begin{equation}
  r_i=\mu+\epsilon_i,\qquad \epsilon_i\overset{\mathrm{i.i.d.}}{\sim}\mathcal N(0,\sigma^2),\qquad \sigma>0,
 \end{equation}
@@ -99,7 +99,7 @@ The strong law gives $\bar\epsilon\to0$ and $D_N^2\to\sigma^2$ almost surely, es
 With a fixed stabilizer $\eta>0$, $(\epsilon_i-\bar\epsilon)/(D_N+\eta)$ converges instead to $\epsilon_i/(\sigma+\eta)$. The unstabilized population-standardization limit applies when the stabilizer is omitted or tends to zero. The finite-sample bound remains valid with a nonnegative stabilizer for nonconstant samples; constant samples have zero numerator and return zero when the stabilizer is positive.
 
 \paragraph{Implications for global normalization.}
-The propositions isolate the effect of normalization sample size: estimated moments approach their population values as the number of independent observations grows. A shared batch scale can use observations across many prompt groups, rather than estimating a separate scale from each small group. For grouped or token-level data, the interpretation depends on the number of independently sampled trajectories and their dependence structure.
+The propositions isolate the effect of normalization sample size: estimated moments approach their population values as the number of independent observations grows. A shared batch scale can use observations across many prompt groups, rather than estimating a separate scale from each small group. For grouped or token-level data, the effective sample size depends on the number of independent trajectories and their dependence structure.
 
 \paragraph{Relationship to baselines and gradients.}
 For an unscaled group mean, $\mathbb{E}[r_i-\bar r_q\mid r_i,q]=(1-1/k)(r_i-\mu_q)$ when responses are conditionally independent with mean reward $\mu_q$. This is the same factor appearing in \Cref{eq:rloo_relation}. The propositions describe convergence to a standardized scalar target. Policy-gradient expectations additionally involve the joint distribution of these normalized rewards and the policy score function.
@@ -130,9 +130,9 @@ Both $k_1$ and $k_3$ have expectation $D_{\mathrm{KL}}(p_\theta\|q)$ under on-po
 \end{aligned}
 \label{eq:kl_pointwise}
 \end{equation}
-The on-policy expectation of the $k_2$ pointwise gradient is exactly \cref{eq:rkl_gradient}. This is the gradient-surrogate interpretation used for the separate KL term in \varn~\citep{liu2025rethinking}. It is distinct from differentiating the entire expectation $\mathbb{E}_{p_\theta}[k_2]$, which also differentiates the sampling distribution.
+The on-policy expectation of the $k_2$ pointwise gradient is exactly \cref{eq:rkl_gradient}. This identity motivates the separate KL term in \varn~\citep{liu2025rethinking}. It is distinct from differentiating the entire expectation $\mathbb{E}_{p_\theta}[k_2]$, which also differentiates the sampling distribution.
 
-Under the same fixed-context assumptions, the expected pointwise gradient of $k_1$ is zero. The $k_1$ expression can instead enter the reward and act as a detached score-function coefficient, as in the returns used by the basic variant. The expected pointwise gradient of $k_3$ equals $-\mathbb{E}_q[\nabla_\theta\log p_\theta]$, the forward-KL gradient. Its value-estimation and loss-gradient roles should therefore be distinguished.
+Under the same fixed-context assumptions, the expected pointwise gradient of $k_1$ is zero. The $k_1$ expression can instead enter the reward and act as a detached score-function coefficient, as in the returns used by the basic variant. The expected pointwise gradient of $k_3$ equals $-\mathbb{E}_q[\nabla_\theta\log p_\theta]$, the forward-KL gradient. Thus, its on-policy mean estimates reverse KL, while its mean pointwise gradient follows forward KL.
 
 \paragraph{Numerical sensitivity.}
 The $k_3$ pointwise gradient contains the importance ratio $q/p_\theta$, which can become large when the current policy assigns low probability to actions favored by the reference. Computing this ratio as $\exp(-z)$ can also overflow for sufficiently negative $z$. The $k_2$ surrogate uses the log ratio in place of this exponential ratio. Its gradient magnitude and variance depend on the joint distribution of the log ratio and the score function.
@@ -144,7 +144,7 @@ The on-policy identities apply when the sampled actions follow the current polic
  \frac{p_\theta(y)}{p_{\mathrm{old}}(y)}z(y)\nabla_\theta\log p_\theta(y)
  \right]=\nabla_\theta D_{\mathrm{KL}}(p_\theta\|q).
 \end{equation}
-The practical separate loss in \cref{eq:baseline_loss} is the unweighted $k_2$ surrogate on the rollout data. Its exact gradient-equivalence interpretation applies at the on-policy point; subsequent optimization uses it as a surrogate. For autoregressive policies, the fixed-context statement concerns the conditional next-token distribution.
+The practical separate loss in \cref{eq:baseline_loss} is the unweighted $k_2$ surrogate on the rollout data. Its expected pointwise gradient equals the reverse-KL gradient at the on-policy point and changes as the policy moves away from the rollout policy. For autoregressive policies, the fixed-context statement concerns the conditional next-token distribution.
 
 
 \section{Design implications and sampling budgets}\label{appendix:design}
@@ -158,4 +158,4 @@ The group baseline compares a response with alternatives to the same prompt; glo
 \paragraph{Response budget.}
 At fixed response count $B$, single-response sampling covers up to $B$ prompts; grouped sampling covers $B/k$. Larger groups trade prompt coverage for exploration of each prompt. Runtime and memory also depend on response length, batching, optimizer state, and rollout implementation.
 \paragraph{Evaluation and attribution.}
-The tool-use metric average@32 averages success across 32 sampled attempts; it differs from pass@32, which counts success if at least one attempt succeeds. The reported tool-use mean is an unweighted average across five benchmarks. The improvements of 1.52 and 2.25 percentage points over GRPO and PPO concern the combined training recipe. Component-level attribution requires controlled comparisons of normalization, reward centering, KL regularization, and loss reduction.
+The tool-use metric average@32 averages success across 32 sampled attempts; it differs from pass@32, which counts success if at least one attempt succeeds. The reported tool-use mean is an unweighted average across five benchmarks. The improvements of 1.52 and 2.25 percentage points over GRPO and PPO are measured for the complete training configuration. The evaluated configuration combines group-mean reward centering, global advantage normalization, a separate KL surrogate, and response-wise loss averaging.

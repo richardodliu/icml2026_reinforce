@@ -3,7 +3,7 @@
 We evaluate our two algorithms, \ours and \varn, in their respective target domains using the OpenRLHF framework \citep{hu2024openrlhf}.
 
 
-\begin{figure}[!h]
+\begin{figure}[htb]
     \centering
     \includegraphics[width=\linewidth]{imgs/orm_reward_kl.pdf}
     \caption{Smoothed training reward and KL divergence. \ours ($k=1$) shows a more gradual reward increase and lower KL divergence than GRPO over the plotted training interval.}
@@ -12,12 +12,12 @@ We evaluate our two algorithms, \ours and \varn, in their respective target doma
 
 
 \subsection{General RLHF}
-First, we evaluate \ours in its $k=1$ configuration, focusing on general-domain RLHF, where efficiency and prompt diversity are key.
+We evaluate \ours in its $k=1$ configuration for general-domain RLHF, allocating one sampled response to each prompt in the rollout batch.
 
 \paragraph{Experimental Setup}
 We use an instruction-following policy model (Llama-3-8B-SFT) and refine it using a Bradley-Terry reward model \citep{bai2022training} trained on $\sim$700K human preference pairs. The policy is trained on 20,000 diverse prompts. We compare \ours ($k=1$) with other critic-free methods: GRPO ($k=4$), RLOO ($k=4$), and ReMax ($k=1$ + 1).
 
-\begin{table}[!t]
+\begin{table}[htb]
     \small
     \centering
 \caption{Comparison on Chat-Arena-Hard \citep{li2024crowdsourced}. The single-sample \ours ($k=1$) scores 46.7 compared with 46.8 for GRPO, with shorter mean responses. Score/length divides the evaluation score by mean response length.}
@@ -36,10 +36,10 @@ We use an instruction-following policy model (Llama-3-8B-SFT) and refine it usin
 \end{table}
 
 \paragraph{Experimental Results}
-As shown in \Cref{tab:general_exp}, the single-sample \textbf{\ours ($k=1$)} achieves a score of 46.7, close to the group-sampling GRPO (46.8). However, it produces shorter responses (832 tokens vs. 860), yielding a higher score/length ratio (0.0561). These measurements describe evaluation performance and generated response length for the single-response and group-sampling configurations.
+As shown in \Cref{tab:general_exp}, the single-sample \textbf{\ours ($k=1$)} achieves a score of 46.7, close to the group-sampling GRPO (46.8). However, it produces shorter responses (832 tokens vs. 860), yielding a higher score/length ratio (0.0561). The single-response configuration therefore achieves a similar evaluation score with shorter mean responses.
 
 \paragraph{Results Analysis}
-\Cref{fig:orm_reward_kl} shows the training dynamics. GRPO's reward and KL divergence rise rapidly, while \ours exhibits a more gradual reward increase and smaller divergence. These curves describe the reward--KL trade-offs of the compared training configurations. Response length can also influence preference-based evaluation~\citep{dubois2024length}. We report evaluation scores alongside response lengths to make both aspects of the comparison explicit.
+\Cref{fig:orm_reward_kl} shows the training dynamics. GRPO's reward and KL divergence rise rapidly, while \ours exhibits a more gradual reward increase and smaller divergence. These curves describe the reward--KL trade-offs of the compared training configurations. Response length can also influence preference-based evaluation~\citep{dubois2024length}. Table~\ref{tab:general_exp} reports both quantities for each method.
 
 % \begin{table*}[!htbp]
 %      \centering
@@ -63,15 +63,15 @@ As shown in \Cref{tab:general_exp}, the single-sample \textbf{\ours ($k=1$)} ach
 
 
 \subsection{Reasoning Experiments}
-Next, we evaluate \ours (group-sample, $k>1$) in its target domain: complex reasoning, where group sampling is standard, and reward signals are often sparse (e.g., 0/1). We compare it directly with GRPO ($k > 1$).
+We evaluate \ours with multiple responses per prompt ($k>1$) on reasoning tasks with rule-based rewards. The comparison with GRPO examines global and local normalization in this grouped-sampling setting.
 
 \subsubsection{Long Reasoning Task}
 We use rule-based rewards (RLVR) in mathematical reasoning settings \citep{guo2025deepseek,seed2025seed1}.
 
 \paragraph{Analysis on Small-Scale Datasets}
-To test for overfitting, we trained on only 30 questions from AIME-24 and evaluated on AIME-25. As shown in \Cref{tab:small_exp}, GRPO (local norm) achieves a near-perfect 95.0\% on the training set but scores only 0.0 Pass@1 and 0.4 Pass@16 on the test set, showing a large train--test performance gap. In contrast, \ours with global norm, while scoring lower on the training set (71.0), shows higher held-out scores (2.5 Pass@1, 40.0 Pass@16).
+To examine generalization from a small training set, we trained on 30 questions from AIME-24 and evaluated on AIME-25. As shown in \Cref{tab:small_exp}, GRPO (local norm) achieves 95.0\% on the training set and 0.0 Pass@1 and 0.4 Pass@16 on the test set, showing a large train--test performance gap. In contrast, \ours with global norm, while scoring lower on the training set (71.0), shows higher held-out scores (2.5 Pass@1, 40.0 Pass@16).
 
-\begin{table}[!t]
+\begin{table}[htb]
     \small
     \centering
 \caption{Comparison on a small training dataset. Training on AIME-24 and evaluation on AIME-25. \ours has lower training accuracy and higher held-out scores than GRPO.}
@@ -108,11 +108,11 @@ The training curves in \Cref{fig:details} show faster fitting of the training qu
 \end{center}
 
 \paragraph{Logical Reasoning (K\&K Puzzles)}
-We also tested on the Knights and Knaves (K\&K) puzzles \citep{xie2025logic, xie2024memorization}, where difficulty increases with the number of characters in each puzzle. \Cref{fig:logic_score} shows that while GRPO is competitive on easy tasks (2-3 people), it has lower accuracy on the harder eight-character puzzles. \ours outperforms GRPO on the evaluated tasks with four or more characters and achieves a higher average score (62.1 vs. 55.7).
+We also tested on the Knights and Knaves (K\&K) puzzles \citep{xie2025logic, xie2024memorization}, where difficulty increases with the number of characters in each puzzle. \Cref{fig:logic_score} shows that while GRPO is competitive on two- and three-character puzzles, it has lower accuracy on the harder eight-character puzzles. \ours outperforms GRPO on the evaluated tasks with four or more characters and achieves a higher average score (62.1 vs. 55.7).
 
-\begin{figure}[!t]
+\begin{figure}[htb]
     \centering
-    \includegraphics[width=0.80\linewidth]{imgs/logic_score.pdf}
+    \includegraphics[width=0.60\linewidth]{imgs/logic_score.pdf}
 
     \caption{Comparison on logic benchmarks. \ours achieves higher accuracy than GRPO on puzzles with four or more characters, including the eight-character evaluation.}
     \label{fig:logic_score}
@@ -120,9 +120,9 @@ We also tested on the Knights and Knaves (K\&K) puzzles \citep{xie2025logic, xie
 
 
 \paragraph{RL from Zero Setting}
-Finally, we applied reinforcement learning directly to a Qwen2.5-Math-Base model on MATH dataset splits \citep{guo2025deepseek}. \Cref{Tab:zero-experiment} shows that \ours again achieves better OOD generalization on the more challenging AIME-24 and AMC-23 datasets, while remaining competitive on the in-distribution MATH-500 test set.
+Finally, we applied reinforcement learning directly to a Qwen2.5-Math-Base model on MATH dataset splits \citep{guo2025deepseek}. \Cref{Tab:zero-experiment} shows that \ours achieves higher Pass@8 on AIME-24 and AMC-23, with gains of 2.08 and 1.25 percentage points, respectively. On MATH-500, its Pass@1 is 72.00 compared with 73.00 for GRPO.
 
-\begin{table*}[!t]
+\begin{table}[htb]
     \small
     \centering
 \caption{Comparison on RL from Zero. \ours achieves higher Pass@8 on AIME-24 and AMC-23; GRPO achieves higher Pass@1 on MATH-500.}
@@ -138,18 +138,18 @@ Finally, we applied reinforcement learning directly to a Qwen2.5-Math-Base model
     \end{tabular}
 
 
-\end{table*}
+\end{table}
 
 \subsection{Multi-step Reinforcement Learning}
-Finally, to test performance in a complex, multi-step environment, we use the zero-shot agent setup from \cite{mai2025agent}, in which a Qwen 2.5 Base 7B model must learn to use Python tools to solve mathematical problems. We evaluate \varn with group sampling ($k > 1$) and group-mean reward centering in this setting (see \Cref{appendix:best}).
+For multi-step reasoning, we use the zero-shot agent setup of \citet{mai2025agent}, in which Qwen2.5-Base-7B learns to use Python tools to solve mathematical problems. We evaluate \varn with group sampling ($k > 1$) and group-mean reward centering in this setting (see \Cref{appendix:best}).
 
 \paragraph{Experimental Setup}
 We adhere to the training and evaluation protocols of the ZeroTIR environment \cite{mai2025agent}. The backbone model is Qwen 2.5 Base 7B, trained using OpenRLHF \cite{hu2024openrlhf} with datasets from ORZ \cite{hu2025open} and DAPO \cite{yu2025dapo}. We assess performance on benchmarks including AIME 2024 \cite{aime2024card}, AIME-2025 \cite{aime2025card}, HMMT FEB-2024/2025, and CMIMC, using the \texttt{average@32} metric.
 
 \paragraph{Experimental Result}
-As shown in \Cref{tab:performance_comparison_main}, \varn achieves the highest average accuracy (24.10) across all benchmarks. It outperforms both GRPO (22.58) and the full-critic PPO (21.85). The improvements in mean accuracy are 1.52 and 2.25 percentage points, respectively. The baseline variant leads on four of the five benchmarks, while GRPO leads on AIME-24. These results evaluate the combined use of reward centering, global normalization, and separate KL regularization.
+As shown in \Cref{tab:performance_comparison_main}, \varn achieves the highest five-benchmark mean accuracy (24.10) among the three methods. It outperforms both GRPO (22.58) and actor--critic PPO (21.85). The improvements in mean accuracy are 1.52 and 2.25 percentage points, respectively. The baseline variant leads on four of the five benchmarks, while GRPO leads on AIME-24. The evaluated baseline variant combines reward centering, global normalization, and separate KL regularization.
 
-\begin{table*}[!t]
+\begin{table}[htb]
     \small
 \centering
 \caption{Tool-use benchmark accuracy (average@32). \varn achieves the highest five-benchmark mean and leads on four benchmarks.}
@@ -165,4 +165,4 @@ PPO (critic-based) & 30.20 & 21.66 & 15.00 & 18.43 & 23.95 & 21.85 \\
 \bottomrule
 \end{tabular}
 
-\end{table*}
+\end{table}
