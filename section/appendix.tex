@@ -70,7 +70,7 @@ Using $D_N^2=N^{-1}\sum_j\epsilon_j^2-\bar\epsilon^2$ and independence,
  &=\frac{(N-1)^2}{N^2}\sigma^2+\frac{N-1}{N^2}\epsilon_i^2.
  \label{eq:condD2}
 \end{align}
-These identities show the conditional dependence of the normalization statistics on the included observation. They do not permit replacing the expectation of a ratio by a ratio of expectations; Proposition~\ref{prop:bound} establishes the finite-sample discrepancy directly.
+These identities describe how the included observation affects the normalization statistics. Proposition~\ref{prop:bound} establishes the finite-sample discrepancy through a direct bound on the ratio.
 
 \paragraph{An exact two-response example.}
 For $N=2$, $D_2=|\epsilon_1-\epsilon_2|/2$ and
@@ -102,7 +102,7 @@ With a fixed stabilizer $\eta>0$, $(\epsilon_i-\bar\epsilon)/(D_N+\eta)$ converg
 The propositions isolate the effect of normalization sample size: estimated moments approach their population values as the number of independent observations grows. A shared batch scale can use observations across many prompt groups, rather than estimating a separate scale from each small group. For grouped or token-level data, the interpretation depends on the number of independently sampled trajectories and their dependence structure.
 
 \paragraph{Relationship to baselines and gradients.}
-For an unscaled group mean, $\mathbb{E}[r_i-\bar r_q\mid r_i,q]=(1-1/k)(r_i-\mu_q)$ when responses are conditionally independent with mean reward $\mu_q$. This is the same factor appearing in \Cref{eq:rloo_relation}. The propositions concern convergence to a standardized scalar target, distinct from unbiasedness of a policy-gradient estimator. Their role is to explain the normalization mechanism under explicit sampling assumptions.
+For an unscaled group mean, $\mathbb{E}[r_i-\bar r_q\mid r_i,q]=(1-1/k)(r_i-\mu_q)$ when responses are conditionally independent with mean reward $\mu_q$. This is the same factor appearing in \Cref{eq:rloo_relation}. The propositions describe convergence to a standardized scalar target. Policy-gradient expectations additionally involve the joint distribution of these normalized rewards and the policy score function.
 
 
 \section{KL regularization as a gradient surrogate}\label{appendix:kl}\label{appendix:kl_design}
@@ -135,7 +135,7 @@ The on-policy expectation of the $k_2$ pointwise gradient is exactly \cref{eq:rk
 Under the same fixed-context assumptions, the expected pointwise gradient of $k_1$ is zero. The $k_1$ expression can instead enter the reward and act as a detached score-function coefficient, as in the returns used by the basic variant. The expected pointwise gradient of $k_3$ equals $-\mathbb{E}_q[\nabla_\theta\log p_\theta]$, the forward-KL gradient. Its value-estimation and loss-gradient roles should therefore be distinguished.
 
 \paragraph{Numerical sensitivity.}
-The $k_3$ pointwise gradient contains the importance ratio $q/p_\theta$, which can become large when the current policy assigns low probability to actions favored by the reference. Computing this ratio as $\exp(-z)$ can also overflow for sufficiently negative $z$. These are potential variance and numerical concerns, not a general proof of infinite variance or a requirement to reset the reference policy. The $k_2$ surrogate avoids this exponential ratio, but its gradient still depends on the log ratio and score function; the identity above alone does not guarantee low variance or training stability.
+The $k_3$ pointwise gradient contains the importance ratio $q/p_\theta$, which can become large when the current policy assigns low probability to actions favored by the reference. Computing this ratio as $\exp(-z)$ can also overflow for sufficiently negative $z$. The $k_2$ surrogate uses the log ratio in place of this exponential ratio. Its gradient magnitude and variance depend on the joint distribution of the log ratio and the score function.
 
 \paragraph{Rollout reuse.}
 The on-policy identities apply when the sampled actions follow the current policy. For actions sampled from $p_{\mathrm{old}}$, a fixed-context importance-weighted gradient satisfies
@@ -156,6 +156,6 @@ For a prompt with $k>1$ responses, let $C_{q,i}=r_i-k^{-1}\sum_j r_j$. Then
 \end{equation}
 The group baseline compares a response with alternatives to the same prompt; global scaling supplies a shared scale across prompts. Homogeneous groups have zero centered task-reward signal. This separates reward centering from prompt-specific standard-deviation normalization.
 \paragraph{Response budget.}
-At fixed response count $B$, single-response sampling covers up to $B$ prompts; grouped sampling covers $B/k$. Larger groups trade prompt coverage for exploration of each prompt. This does not establish a runtime or memory ratio: response length, batching, optimizer state, and rollout implementation also matter.
+At fixed response count $B$, single-response sampling covers up to $B$ prompts; grouped sampling covers $B/k$. Larger groups trade prompt coverage for exploration of each prompt. Runtime and memory also depend on response length, batching, optimizer state, and rollout implementation.
 \paragraph{Evaluation and attribution.}
-The tool-use metric average@32 averages success across 32 sampled attempts; it differs from pass@32, which counts success if at least one attempt succeeds. The reported tool-use mean is an unweighted average across five benchmarks. The improvements of 1.52 and 2.25 percentage points over GRPO and PPO concern the combined training recipe. Controlled ablations would be needed to separate contributions from normalization, reward centering, KL regularization, and loss reduction.
+The tool-use metric average@32 averages success across 32 sampled attempts; it differs from pass@32, which counts success if at least one attempt succeeds. The reported tool-use mean is an unweighted average across five benchmarks. The improvements of 1.52 and 2.25 percentage points over GRPO and PPO concern the combined training recipe. Component-level attribution requires controlled comparisons of normalization, reward centering, KL regularization, and loss reduction.

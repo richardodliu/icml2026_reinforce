@@ -2,8 +2,8 @@
 
 \begin{figure*}[!ht]
     \centering
-    \includegraphics[width=0.85\textwidth]{imgs/re_2.pdf}
-    \caption{The comparison of PPO, ReMax, GRPO, RLOO, and \ours. \ours, as shown in the figure, removes the critic model and uses global batch normalization. \varn uses group sampling, similar to GRPO/RLOO, but replaces the local group baseline with a group-mean subtraction followed by global batch normalization.}
+    \includegraphics[width=\textwidth]{imgs/re_2.pdf}
+    \caption{The comparison of PPO, ReMax, GRPO, RLOO, and \ours. \ours, as shown in the figure, removes the critic model and uses global batch normalization. \varn uses group sampling, similar to GRPO/RLOO, but combines group-mean subtraction with global batch normalization.}
     \label{fig:main}
 \end{figure*}
 
@@ -43,10 +43,10 @@ Critic-free methods in \Cref{fig:main} remove the critic $V(\cdot)$ and compute 
 A_{q,o_t^{(i)}} = \frac{r(o^{(i)}) - \text{mean}\bigl(\{r(o^{(j)})\}_{j=1}^{k}\bigr)}{\text{std}\bigl(\{r(o^{(j)})\}_{j=1}^{k}\bigr) + \epsilon}
 \end{equation}
 
-\subsection{The Problem with Local Normalization}
-The core issue with methods like GRPO lies in \Cref{eq:grpo}. The usage of \textbf{prompt-level (local) normalization} is problematic for three reasons:
+\subsection{Properties of Local Normalization}
+The \textbf{prompt-level (local) normalization} in \Cref{eq:grpo} has three properties relevant to advantage estimation and evaluation:
 \begin{enumerate}
-    \item \textbf{Finite-Sample Distortion}: Appendix~\ref{appendix:proof_GRPO} proves that self-normalization differs from the population-standardized reward in finite samples. This characterizes the scalar normalization mechanism; it does not by itself establish bias of the full policy-gradient estimator.
-    \item \textbf{Practical Sensitivity}: Small groups (e.g., 4 or 8 responses) provide noisy estimates of reward spread. Standardized advantages are bounded by $\sqrt{k-1}$ for nonconstant groups using divisor $k$, rather than exploding as the spread vanishes. Identical rewards produce zero centered signal; mixed outcomes induce prompt-specific update scales.
-    \item \textbf{Task Overfitting}: Group-relative updates compare responses to the same prompt. The resulting prompt weighting may affect transfer to other tasks. Our small-data experiments distinguish training-set fit from held-out performance rather than treating overfitting as an inevitable consequence.
+    \item \textbf{Finite-Sample Distortion}: Appendix~\ref{appendix:proof_GRPO} proves that self-normalization differs from the population-standardized reward in finite samples. The result concerns the conditional expectation of a self-normalized scalar reward under independent Gaussian sampling.
+    \item \textbf{Practical Sensitivity}: Small groups (e.g., 4 or 8 responses) provide noisy estimates of reward spread. Standardized advantages are bounded by $\sqrt{k-1}$ for nonconstant groups using divisor $k$. Identical rewards produce zero centered signal; mixed outcomes induce prompt-specific update scales.
+    \item \textbf{Prompt Weighting}: Group-relative updates compare responses to the same prompt and rescale each group by its own reward spread. Our small-data experiments evaluate training-set fit and held-out performance separately to examine generalization under this weighting.
 \end{enumerate}

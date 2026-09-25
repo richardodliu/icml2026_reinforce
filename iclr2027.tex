@@ -94,7 +94,7 @@
 \hypersetup{
   pdftitle={REINFORCE++: Stabilizing Critic-Free Policy Optimization with Global Normalization},
   pdfauthor={Anonymous Authors},
-  pdfkeywords={Machine Learning, ICML}
+  pdfkeywords={Machine Learning, Reinforcement Learning, ICLR}
 }
 
 \begin{document}
@@ -102,13 +102,13 @@
 \maketitle
 
 \begin{abstract}
-  Reinforcement Learning from Human Feedback (RLHF) plays a crucial role in aligning Large Language Models (LLMs).
-  The dominant algorithm, Proximal Policy Optimization~(PPO), employs a critic network to estimate advantages, which introduces significant computational and memory overhead. To address this, a family of critic-free algorithms (e.g., GRPO, RLOO) has emerged.
+  Reinforcement Learning from Human Feedback (RLHF) is used to align Large Language Models (LLMs).
+  A widely used algorithm, Proximal Policy Optimization~(PPO), employs a critic network to estimate advantages, which introduces significant computational and memory overhead. To address this, a family of critic-free algorithms (e.g., GRPO, RLOO) has emerged.
   However, methods such as GRPO rely on \textit{prompt-level (local)} advantage normalization, whose finite-sample distortion we characterize and whose training stability and held-out generalization we examine.
-  To solve these challenges, we introduce \textbf{\ours}, a critic-free framework centered on \textbf{Global Advantage Normalization}.
-  By normalizing advantages across the entire global batch rather than small, prompt-specific groups, our method uses a shared scale whose sample moments converge under independent sampling; this does not imply unbiasedness of the full policy gradient.
+  We introduce \textbf{\ours}, a critic-free framework centered on \textbf{Global Advantage Normalization}.
+  By normalizing advantages across the entire global batch rather than small, prompt-specific groups, our method uses a shared scale estimated from the rollout batch. We characterize finite-sample self-normalization and its large-sample limit in an independent Gaussian reward model.
   We introduce two variants: \textbf{\ours}, a computationally efficient algorithm ($k \ge 1$) for general-domain RLHF, and \textbf{\varn}, a group-sampling variant ($k > 1$) for complex reasoning tasks.
-  Across our evaluated settings, each variant improves training stability and matches or exceeds strong critic-free baselines; in complex agentic settings, \varn is competitive with PPO.
+  Experiments show competitive preference-alignment scores with single-response sampling and higher held-out reasoning scores than GRPO. On five tool-use benchmarks, \varn achieves a mean accuracy of 24.10, compared with 22.58 for GRPO and 21.85 for PPO.
 
 \end{abstract}
 
@@ -127,16 +127,16 @@
 
 \section*{AI Use Statement}
 
-Generative AI tools assisted with template migration, formatting, compilation diagnostics, and mathematical exposition and proof revision. They were not used to generate experimental data, fabricate results, or conduct new experiments. The authors reviewed all AI-assisted work and take responsibility for the final content of this paper, including its text, claims, and artifacts.
+Generative AI tools assisted with manuscript preparation, including formatting, mathematical exposition, and proof revision. Experimental data and results were produced by the authors. The authors reviewed the AI-assisted content and take responsibility for the final manuscript and its accompanying artifacts.
 
 \section*{Ethics Statement}
 
-Reinforcement learning is increasingly used to steer large language models by optimizing them against a reward signal, including verifiable, programmatic rewards (RLVR) for domains such as math, code, and tool use. The main potential positive impact of this line of work is improved scalability and reproducibility of post-training: verifiable rewards can reduce reliance on human labeling and make optimization targets easier to audit and replicate. By improving the stability and efficiency of critic-free optimization under sparse and brittle rewards, our method can help make RLVR-style training more reliable.
+Reinforcement learning is increasingly used to steer large language models by optimizing them against a reward signal, including verifiable, programmatic rewards (RLVR) for domains such as math, code, and tool use. The main potential positive impact of this line of work is improved scalability and reproducibility of post-training: verifiable rewards can reduce reliance on human labeling and make optimization targets easier to audit and replicate. The critic-free methods studied here aim to support this use of reinforcement learning through shared advantage scaling and prompt-specific reward centering.
 
 Potential risks include reward gaming when verifiers are incomplete or mis-specified, and dual-use concerns if improved tool-use or problem-solving capabilities are deployed without safeguards. We recommend evaluating beyond verifier scores (e.g., robustness and red-teaming), stress-testing verifiers for exploitability, and using conservative deployment controls (e.g., access restrictions and monitoring) for systems trained with RL.
 
 \section*{Reproducibility Statement}
-Section~\ref{sec:method} specifies the algorithms, and Section~\ref{sec:experiment} describes the experimental settings. Appendix~\ref{appendix:batch_mean} specifies the response-wise loss reduction of the stated objective. Appendices~\ref{appendix:proof_GRPO} and~\ref{appendix:kl_design} provide assumptions and derivations for normalization and KL regularization.
+Section~\ref{sec:method} specifies the algorithms, and Section~\ref{sec:experiment} describes the experimental settings. Appendix~\ref{appendix:batch_mean} specifies the response-wise loss reduction of the policy objective. Appendices~\ref{appendix:proof_GRPO} and~\ref{appendix:kl_design} provide assumptions and derivations for normalization and KL regularization.
 
 \bibliography{reference}
 \bibliographystyle{iclr2027_conference}

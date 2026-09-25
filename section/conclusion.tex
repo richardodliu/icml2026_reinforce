@@ -1,12 +1,10 @@
 \section{Conclusion}\label{sec:conclusion}
-In this paper, we present \ours, a critic-free RLHF framework designed to enhance training stability by addressing fundamental flaws in existing methods. We identified that prior critic-free algorithms, such as GRPO, rely on \textit{prompt-level (local)} advantage normalization, whose finite-sample distortion we characterize (Appendix~\ref{appendix:proof_GRPO}) and demonstrate to be practically unstable.
+We present \ours, a critic-free framework that combines PPO clipping with global advantage normalization. The framework separates the choice of reward baseline from the scale used across prompts. Our scalar analysis characterizes finite-sample self-normalization and its convergence to population standardization under independent Gaussian sampling with a vanishing numerical stabilizer.
 
-Our solution, \textbf{Global Advantage Normalization}, normalizes advantages across the entire batch, providing a shared scale that converges to population standardization under independent sampling. We proposed two variants tailored for different needs:
+The two variants implement this framework for different sampling configurations:
 \begin{enumerate}
-    % --- MODIFIED: Conclusion updated to match the k>=1 logic ---
-    \item \ours: For general-domain RLHF, we show the single-sample ($k=1$) approach achieves competitive preference alignment with broader prompt coverage. We also show that its application with $k>1$ is robust for reasoning tasks (Section 4.2).
-    % --- END OF MODIFICATION ---
-    \item \varn: For complex reasoning and agent tasks, this variant combines group-mean reshaping with stable global normalization and a $k_2$ gradient surrogate for separate KL regularization.
+    \item \ours uses globally normalized returns with a KL penalty incorporated into the reward. The $k=1$ configuration provides one response per prompt, while $k>1$ supports multiple sampled responses in reasoning tasks.
+    \item \varn combines group-mean reward centering, global normalization, and a separate $k_2$ KL surrogate. It uses within-prompt reward comparisons while sharing normalization statistics across the rollout batch.
 \end{enumerate}
 
-Our empirical results, supported by independent validation from multiple third-party systems, confirmed the effectiveness of this specialized approach. \ours demonstrated competitive general RLHF results and stronger held-out reasoning scores. The basic variant improved held-out performance in the small-data setting, while \varn outperformed both GRPO and full-critic PPO in complex, long-horizon tool-use tasks. This work demonstrates that a theoretically sound, stable approach without a critic model can be more efficient and effective than traditional PPO.
+Experiments cover preference alignment, mathematical and logical reasoning, and multi-step tool use. The single-response variant scores 46.7 on Chat-Arena-Hard, compared with 46.8 for GRPO, with shorter mean responses. The reasoning experiments show higher held-out scores than GRPO across the reported AIME and AMC comparisons. In tool use, the baseline variant achieves the highest mean accuracy across five benchmarks, exceeding GRPO and PPO by 1.52 and 2.25 percentage points. Together, these results support global advantage normalization as a practical component of critic-free policy optimization across the evaluated tasks.
